@@ -870,8 +870,9 @@ WiFi_SetParamBoolValue
     }
     if (AnscEqualString(ParamName, "ApplyAccessPointSettings", TRUE ))
     {
+	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mahesh in ApplyAccessPointSettings \n",__func__, __LINE__);
         if (bValue == TRUE){
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings push to queue \n",__func__, __LINE__);
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mahesh in ApplyAccessPointSettings push to queue \n",__func__, __LINE__);
             if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
             {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings failed \n",__func__, __LINE__);
@@ -6035,6 +6036,7 @@ SSID_SetParamStringValue
 
     if ( AnscEqualString(ParamName, "SSID", TRUE) )
     {
+	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mahesh_test SSID\n", __FUNCTION__,__LINE__);
         if(global_wifi_config->global_parameters.force_disable_radio_feature)
         {
              CcspWifiTrace(("RDK_LOG_ERROR, WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED\n" ));
@@ -6052,6 +6054,7 @@ SSID_SetParamStringValue
 
         if ( AnscEqualString(vapInfo->u.bss_info.ssid, pString, TRUE) )
         {
+		wifi_util_dbg_print(WIFI_DMCLI,"Mahesh in AnscEqualString \n");
             return  TRUE;
         }
 
@@ -6068,6 +6071,7 @@ SSID_SetParamStringValue
 	    }
 	}
 	snprintf(vapInfo->u.bss_info.ssid,sizeof(vapInfo->u.bss_info.ssid),"%s",pString);
+	wifi_util_dbg_print(WIFI_DMCLI,"Mahesh above set_dml_cache_vap_config_changed pString= %s \n", pString);
 	set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }

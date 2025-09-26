@@ -748,6 +748,7 @@ int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len,
 int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type,
     wifi_event_subtype_t sub_type, wifi_event_route_t *rt)
 {
+	wifi_util_error_print(WIFI_CTRL,"Mahesh in push_event_to_ctrl_queue\n");
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_event_t *event;
     bool is_limit_reached;

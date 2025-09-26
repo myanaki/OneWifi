@@ -1200,6 +1200,7 @@ void set_cac_cache_changed(uint8_t vap_index)
 
 int push_subdoc_to_one_wifidb(uint8_t subdoc)
 {
+	 wifi_util_info_print(WIFI_DMCLI, "Mahesh in push_subdoc_to_one_wifidb\n");
     webconfig_subdoc_data_t data;
     char *str = NULL;
 
@@ -1210,7 +1211,7 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
 
     if (webconfig_encode(&webconfig_dml.webconfig, &data, subdoc) == webconfig_error_none) {
         str = data.u.encoded.raw;
-        wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache encoded successfully  \n", __FUNCTION__);
+        wifi_util_info_print(WIFI_DMCLI, "%s: Mahesh in VAP DML cache encoded successfully  \n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
@@ -1263,7 +1264,7 @@ int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,wifi_event_subtype_t rfc)
 
 int push_vap_dml_cache_to_one_wifidb()
 {
-
+	 wifi_util_info_print(WIFI_DMCLI, "Mahesh in push_vap_dml_cache_to_one_wifidb\n");
     if(is_vap_config_changed == FALSE && is_vap_cac_config_changed == FALSE)
     {
         wifi_util_info_print(WIFI_DMCLI, "%s: No vap DML Modified Return success  \n", __FUNCTION__);
@@ -1271,7 +1272,7 @@ int push_vap_dml_cache_to_one_wifidb()
     }
 
     if (is_vap_config_changed & PRIVATE) {
-        wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_private DML Modified  \n", __FUNCTION__);
+        wifi_util_info_print(WIFI_DMCLI, "%s: Mahesh in Subdoc webconfig_subdoc_type_private DML Modified  \n", __FUNCTION__);
         push_subdoc_to_one_wifidb(webconfig_subdoc_type_private);
     }
     if (is_vap_config_changed & HOTSPOT) {
