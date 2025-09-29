@@ -12,6 +12,7 @@
 		},
 		"NotifyWifiChanges": true,
 		"PreferPrivate": true,
+		"my_test_parameter": false,
 		"PreferPrivateConfigure": true,
 		"FactoryReset": false,
 		"TxOverflowSelfheal": false,

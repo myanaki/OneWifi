@@ -1644,7 +1644,9 @@
         PJS_OVS_INT(mgt_frame_rate_limit) \
         PJS_OVS_INT(mgt_frame_rate_limit_window_size) \
         PJS_OVS_INT(mgt_frame_rate_limit_cooldown_time) \
+       PJS_OVS_BOOL(my_test_parameter) \
     )
+//AISH
 
 #define PJS_SCHEMA_Wifi_Preassoc_Control_Config \
     PJS(schema_Wifi_Preassoc_Control_Config, \
@@ -3273,6 +3275,7 @@
 
 #define SCHEMA__Wifi_Global_Config "Wifi_Global_Config"
 #define SCHEMA_COLUMN__Wifi_Global_Config(COLUMN) \
+    COLUMN(my_test_parameter) \
     COLUMN(gas_config) \
     COLUMN(notify_wifi_changes) \
     COLUMN(prefer_private) \
@@ -4549,6 +4552,7 @@
 #define SCHEMA__Wifi_Global_Config__gas_config "gas_config"
 #define SCHEMA__Wifi_Global_Config__notify_wifi_changes "notify_wifi_changes"
 #define SCHEMA__Wifi_Global_Config__prefer_private "prefer_private"
+#define SCHEMA__Wifi_Global_Config__my_test_parameter "my_test_parameter"
 #define SCHEMA__Wifi_Global_Config__prefer_private_configure "prefer_private_configure"
 #define SCHEMA__Wifi_Global_Config__factory_reset "factory_reset"
 #define SCHEMA__Wifi_Global_Config__tx_overflow_selfheal "tx_overflow_selfheal"

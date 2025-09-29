@@ -690,12 +690,16 @@ webconfig_error_t encode_gas_config(const wifi_GASConfiguration_t *gas_info, cJS
 webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_info, cJSON *global_obj)
 {
     char str[BUFFER_LENGTH_WIFIDB] = {0};
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d AISH: encode_wifi_global_config. \n", __func__, __LINE__);
 
     // NotifyWifiChanges
     cJSON_AddBoolToObject(global_obj, "NotifyWifiChanges",(const cJSON_bool) global_info->notify_wifi_changes);
 
     // PreferPrivate
     cJSON_AddBoolToObject(global_obj, "PreferPrivate", (const cJSON_bool) global_info->prefer_private);
+
+    //AISH
+    cJSON_AddBoolToObject(global_obj, "my_test_parameter", (const cJSON_bool) global_info->my_test_parameter);
 
     // PreferPrivateConfigure
     cJSON_AddBoolToObject(global_obj, "PreferPrivateConfigure", (const cJSON_bool) global_info->prefer_private_configure);

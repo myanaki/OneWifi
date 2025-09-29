@@ -1336,7 +1336,7 @@ static int webconfig_memwraptool_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decod
 
 int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    wifi_util_dbg_print(WIFI_CTRL,"Inside webconfig_global_config_apply\n");
+    wifi_util_dbg_print(WIFI_CTRL,"AISH : Inside webconfig_global_config_apply\n");
     wifi_global_param_t *param;
     wifi_global_config_t *data_global_config;
     data_global_config = &data->config;

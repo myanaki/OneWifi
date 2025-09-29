@@ -2278,7 +2278,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
 webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *global_info)
 {
     const cJSON  *param;
-
+     wifi_util_dbg_print(WIFI_WEBCONFIG,"AISH: decode_wifi_global_config\n");
     // NotifyWifiChanges
     decode_param_bool(global_cfg, "NotifyWifiChanges", param);
     global_info->notify_wifi_changes = (param->type & cJSON_True) ? true:false;
@@ -2286,6 +2286,10 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     // PreferPrivate
     decode_param_bool(global_cfg, "PreferPrivate", param);
     global_info->prefer_private = (param->type & cJSON_True) ? true:false;
+
+    //AISH
+    decode_param_bool(global_cfg, "my_test_parameter", param);
+    global_info->my_test_parameter = (param->type & cJSON_True) ? true:false;
 
     // PreferPrivateConfigure
     decode_param_bool(global_cfg, "PreferPrivateConfigure", param);

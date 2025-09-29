@@ -101,13 +101,19 @@
                     <name>X_CISCO_COM_RadioPower</name>
                     <type>string</type>
                     <syntax>string</syntax>
-                    <writable>true</writable>
-                </parameter>
-	        <parameter>
-                    <name>X_CISCO_COM_EnableTelnet</name>
-                    <type>boolean</type>
-                    <syntax>bool</syntax>
-                    <writable>true</writable>
+		    <writable>true</writable>
+	    </parameter>
+	    <parameter>
+		    <name>X_comcast_MyTest</name>
+		    <type>boolean</type>
+		    <syntax>bool</syntax>
+		    <writable>true</writable>
+	    </parameter>
+	    <parameter>
+		    <name>X_CISCO_COM_EnableTelnet</name>
+		    <type>boolean</type>
+		    <syntax>bool</syntax>
+		    <writable>true</writable>
                 </parameter>
                 <parameter>
                     <name>X_CISCO_COM_ResetRadios</name>

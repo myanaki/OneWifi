@@ -249,6 +249,8 @@ WiFi_GetParamBoolValue
     int val =0 ;
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_dml_wifi_global_param();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  Mahesh: GET path of dmcli \n", __FUNCTION__,__LINE__);
+    printk("Mahesh: get path of dmcli\n");
 
     if(pcfg== NULL)
     {
@@ -291,7 +293,11 @@ WiFi_GetParamBoolValue
         *pBool = FALSE;
         return TRUE;
     }
-
+    if  (AnscEqualString(ParamName, "X_comcast_MyTest", TRUE))
+    {
+       *pBool = pcfg->my_test_parameter;//AISH
+       return TRUE;
+    }
 
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_PreferPrivate", TRUE))
     {
@@ -835,7 +841,8 @@ WiFi_SetParamBoolValue
     UNREFERENCED_PARAMETER(hInsContext);
     wifi_global_config_t *global_wifi_config;
     global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
-
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AISH: inside set path\n", __FUNCTION__,__LINE__);
+    printk("AISH: set path of dmcli\n");
     if (global_wifi_config == NULL)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
@@ -1230,6 +1237,24 @@ WiFi_SetParamBoolValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d setting WPA3_Personal_Compatibility RFC to %d \n", __FUNCTION__, __LINE__, bValue);
         }
         return TRUE;
+    }
+    //AISH
+    if(AnscEqualString(ParamName, "X_comcast_MyTest", TRUE))
+    {
+       if(global_wifi_config->global_parameters.my_test_parameter == bValue){
+           return TRUE;
+       }
+       wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:AISH :my_test_parameter=%d Value = %d  \n",__func__,
+       __LINE__,global_wifi_config->global_parameters.my_test_parameter,bValue);
+       global_wifi_config->global_parameters.my_test_parameter = bValue;
+
+       if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d:AISH Failed to push my_test_parameter[X_comcast_MyTest] Enable value to onewifi db\n", __func__, __LINE__);
+        }
+       //push_global_config_dml_cache_to_one_wifidb();
+       //push_my_test_parameter_ctrl_queue(bValue);
+       return TRUE;
     }
 
     return FALSE;

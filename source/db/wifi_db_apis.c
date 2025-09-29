@@ -80,6 +80,7 @@
 #define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG 100033
 #define ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_FLAG 100035
 #define ONEWIFI_DB_VERSION_MGT_FRAME_RATE_LIMIT 100036
+#define ONEWIFI_DB_VERSION_MY_TEST_PARAMETER 100043 //AISH
 #define ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG 100038
 #define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100039
 #define DEFAULT_MANAGED_WIFI_SPEED_TIER 2
@@ -1243,6 +1244,7 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
         g_wifidb->global_config.global_parameters.memwraptool.heapwalk_interval =
             new_rec->heapwalk_interval;
         g_wifidb->global_config.global_parameters.vlan_cfg_version = new_rec->vlan_cfg_version;
+       g_wifidb->global_config.global_parameters.my_test_parameter = new_rec->my_test_parameter;//AISH
 #ifdef FEATURE_SUPPORT_WPS
         if (strlen(new_rec->wps_pin) != 0) {
             strncpy(g_wifidb->global_config.global_parameters.wps_pin, new_rec->wps_pin,
@@ -3170,7 +3172,7 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Global Config table \n",__func__, __LINE__);
         return -1;
     }
-
+    wifidb_print("%s:%d AISH: wifidb_update_wifi_global_config. \n",__func__, __LINE__);
     cfg.notify_wifi_changes = config->notify_wifi_changes;
     cfg.prefer_private = config->prefer_private;
     cfg.prefer_private_configure = config->prefer_private_configure;
@@ -3211,6 +3213,7 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     cfg.diagnostic_enable = config->diagnostic_enable;
     cfg.validate_ssid = config->validate_ssid;
     cfg.device_network_mode = config->device_network_mode;
+    cfg.my_test_parameter = config->my_test_parameter;//AISH
 
     strncpy(cfg.normalized_rssi_list,config->normalized_rssi_list,sizeof(cfg.normalized_rssi_list)-1);
     cfg.normalized_rssi_list[sizeof(cfg.normalized_rssi_list)-1] = '\0';
@@ -3297,6 +3300,7 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
     struct schema_Wifi_Global_Config *pcfg = NULL;
 
     pcfg = (struct schema_Wifi_Global_Config  *) wifidb_get_table_entry(NULL, NULL,&table_Wifi_Global_Config,OCLM_UUID);
+    wifidb_print("%s:%d AISH: wifidb_get_wifi_global_config.\n",__func__, __LINE__);
     if (pcfg == NULL) 
     {
         wifidb_print("%s:%d Table table_Wifi_Global_Config not found \n",__func__, __LINE__);
@@ -3353,6 +3357,7 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->force_disable_radio_feature = pcfg->force_disable_radio_feature;
         config->force_disable_radio_status = pcfg->force_disable_radio_status;
         config->fixed_wmm_params = pcfg->fixed_wmm_params;
+       config->my_test_parameter = pcfg->my_test_parameter;//AISH
         if (strlen(pcfg->wifi_region_code) != 0) {
             strncpy(config->wifi_region_code,pcfg->wifi_region_code,sizeof(config->wifi_region_code)-1);
         }
@@ -4683,6 +4688,12 @@ static void wifidb_global_config_upgrade()
         g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_window_size = 1;
         g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_cooldown_time = 30;
     }
+
+   if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MY_TEST_PARAMETER) {
+       wifi_util_dbg_print(WIFI_DB, "%s:%d AISH: upgrade global config, old db version %d \n", __func__,
+       __LINE__, g_wifidb->db_version);
+       g_wifidb->global_config.global_parameters.my_test_parameter = false;
+   }
 
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG) {
         wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d \n", __func__,
@@ -7409,7 +7420,7 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     g_wifidb = get_wifimgr_obj();
 
     memset(&cfg,0,sizeof(cfg));
-
+    cfg.my_test_parameter = false;//AISH
     cfg.notify_wifi_changes = true;
     cfg.prefer_private =  false;
     cfg.prefer_private_configure = true;
@@ -8071,7 +8082,7 @@ void init_wifidb(void)
     //init_wifidb_data();//TBD
     start_wifidb_monitor();
 }
-
+//AISH
 int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
 {
     char *str = NULL;

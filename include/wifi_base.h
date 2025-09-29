@@ -481,6 +481,8 @@ typedef struct {
 
 typedef struct {
     bool notify_wifi_changes;
+    //AISH:boolean test paramter
+    bool my_test_parameter;
     bool prefer_private;
     bool prefer_private_configure;
     bool factory_reset;

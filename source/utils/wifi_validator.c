@@ -1673,6 +1673,10 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
     validate_param_bool(global_cfg, "NotifyWifiChanges", param);
     global_info->notify_wifi_changes = (param->type & cJSON_True) ? true:false;
 
+    //Mahesh
+    validate_param_bool(global_cfg, "my_test_parameter", param);
+    global_info->my_test_parameter = (param->type & cJSON_True) ? true:false;
+
     // PreferPrivate
     validate_param_bool(global_cfg, "PreferPrivate", param);
     global_info->prefer_private = (param->type & cJSON_True) ? true:false;
