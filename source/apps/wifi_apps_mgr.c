@@ -347,11 +347,12 @@ int apps_mgr_init(wifi_ctrl_t *ctrl, wifi_app_descriptor_t *descriptor, unsigned
     apps_mgr->ctrl = ctrl;
     apps_mgr->apps_map = hash_map_create();
 
-    wifi_util_info_print(WIFI_APPS,"%s:%d Total number of apps:%d\n", __func__, __LINE__, num_apps);
+    wifi_util_info_print(WIFI_APPS,"%s:%d IEEE1905: Total number of apps:%d\n", __func__, __LINE__, num_apps);
     for (i = 0; i < num_apps; i++) {
         wifi_util_info_print(WIFI_APPS,"%s:%d desc:%s rfc:%d enable:%d\n", __func__, __LINE__,
             descriptor->desc, descriptor->rfc, descriptor->enable);
         if (descriptor->rfc == true) {
+	     wifi_util_info_print(WIFI_APPS,"%s:%d IEEE1905: Calling app_register() for %s\n", __func__, __LINE__, descriptor->desc);
             app_register(apps_mgr, descriptor);
         }
         descriptor++;

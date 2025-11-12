@@ -470,7 +470,7 @@ wifi_app_descriptor_t app_desc[] = {
          wifi_app_inst_multiap, 0,
          wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
          true, true,
-         "MultiAp",
+         "MultiAp_IEEE1905",
          multiap_init, multiap_event, multiap_deinit,
          NULL, NULL
 },

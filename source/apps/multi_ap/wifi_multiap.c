@@ -62,7 +62,7 @@ int multiap_init(wifi_app_t *app, unsigned int create_flag)
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }
-    wifi_util_info_print(WIFI_APPS, "%s:%d: Init multiap_app \n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d: IEEE1905: Init multiap_app \n", __func__, __LINE__);
 
     return RETURN_OK;
 }
@@ -71,6 +71,7 @@ int multiap_deinit(wifi_app_t *app)
 {
     return RETURN_OK;
 }
+/*
 bool get_al_mac_address(unsigned char *buff,unsigned int len,unsigned char *mac)
  {
     multiap_tlv_t    *tlv;
@@ -142,6 +143,92 @@ bool get_sta_mac_address(unsigned char *buff,unsigned int len,unsigned char *mac
 
     return false;
  }
+*/
+
+int parse_multiap_tlv(unsigned char *buff, unsigned int len, multiap_tlv_type_t type, void *out_buff, size_t out_len)
+{
+    unsigned int start = sizeof(multiap_raw_hdr_t) + sizeof(multiap_cmdu_t);
+    unsigned int remaining;
+    int rlen = -1;
+
+     wifi_util_info_print(WIFI_CTRL, "IEEE1905 ::Inside  parse_multiap_tlvs\n");
+    if (!buff || !out_buff || len < sizeof(multiap_raw_hdr_t) + sizeof(multiap_cmdu_t)) {
+        wifi_util_info_print(WIFI_CTRL, "Invalid input parameters to parse_multiap_tlvs\n");
+        return -1;
+    }
+
+    remaining = len - start;
+    multiap_tlv_t *tlv = (multiap_tlv_t *)&buff[start];
+ 
+    wifi_util_info_print(WIFI_CTRL, "In parse_multiap_tlvs function. ******* \n");
+
+    while (remaining > (int)sizeof(multiap_tlv_t) && tlv->type != multiap_tlv_type_eom)
+    {
+        unsigned short tlv_len = ntohs(tlv->len);
+
+        // Safety: ensure we don’t read beyond buffer
+        if (tlv_len > remaining - (int)sizeof(multiap_tlv_t)) {
+            wifi_util_info_print(WIFI_CTRL, "TLV length exceeds remaining buffer, aborting. ******* \n");
+            return -1;
+        }
+
+        if (tlv->type == type) {
+            //found requested tlv break from while
+            break;
+        }
+        // Move to next TLV
+        remaining -= sizeof(multiap_tlv_t) + tlv_len;
+        tlv = (multiap_tlv_t *)((unsigned char *)tlv + sizeof(multiap_tlv_t) + tlv_len);
+    }
+    if (tlv->type != type) {
+        wifi_util_info_print(WIFI_CTRL, "Requested TLV type not found. ******* \n");
+        return -1;
+    }
+
+        rlen = htons(tlv->len);
+        if (out_len < (size_t)rlen) {
+                wifi_util_info_print(WIFI_CTRL, "Not enough memory******* \n");
+                return -1;
+        }
+
+    switch (type)
+    {
+        case multiap_tlv_type_al_mac_address:
+                  {
+                        memcpy(out_buff, tlv->value, rlen);
+                        wifi_util_info_print(WIFI_CTRL, "Found AL MAC Address TLV ******* \n");
+                        wifi_util_info_print(WIFI_CTRL,"%s:%d len==%d :0x%x \n",__func__,__LINE__,tlv->len,htons(tlv->len));
+                  }
+            break;
+
+        case multiap_tlv_type_supported_service:
+                  {
+                        multiap_supported_srv_t *stlv = (multiap_supported_srv_t *) out_buff;
+
+                        stlv->num_service = tlv->value[0];
+                        wifi_util_info_print(WIFI_CTRL," %s:%d: stlv->num_service** = 0x%x \n",__func__,__LINE__,stlv->num_service);
+                        memcpy(&stlv->supported_service, &tlv->value[1], tlv->value[0]);
+                        wifi_util_info_print(WIFI_CTRL,"%s:%d stlv->supported_service = 0x%x  htons value =0x%x normalval=%d \n",__func__,__LINE__,stlv->supported_service,htons(tlv->len),tlv->len);
+                        wifi_util_info_print(WIFI_CTRL, "Found Supported Service TLV ******* \n");
+                  }
+            break;
+
+        case multiap_tlv_type_sta_mac_addr:
+                  {
+                        memcpy(out_buff, tlv->value, rlen);
+                        wifi_util_info_print(WIFI_CTRL,"%s:%d rlen ==%d  \n",__func__,__LINE__, rlen);
+                        wifi_util_info_print(WIFI_CTRL, "Found STA MAC Address TLV ******* \n");
+                  }
+            break;
+
+        default:
+            wifi_util_info_print(WIFI_CTRL, "Unknown TLV type requested. ******* \n");
+                       rlen = -1;
+            break;
+    }
+
+    return rlen;
+}
 
 int get_service_type()
 {
@@ -160,7 +247,7 @@ int get_service_type()
 }
 int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 {
-    wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Start.\n", __func__, __LINE__);
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl->rf_status_down || (ctrl->network_mode == rdk_dev_mode_type_ext)) {
@@ -169,7 +256,7 @@ int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         return RETURN_OK;
     }
 
-    ctrl->multi_ap_sta_enabled = true;
+    ctrl->multiap_sta_enabled = true;
     receive_multiap_message();
     //start the station vaps only if none of the station is connected to vaps because in XLE when its in GW mode(with WAN failover) 
     // stations are connected to the GW then we should not start the station vaps
@@ -179,17 +266,17 @@ int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 
 int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 {
-    wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEE1905: Stop.\n", __func__, __LINE__);
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    ctrl->multi_ap_sta_enabled = false;
+    ctrl->multiap_sta_enabled = false;
     start_station_vaps(true,false);
     return RETURN_OK;
 }
 
 int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
-    wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Timeout.\n", __func__, __LINE__);
     char* interface_name = (char*)arg;
     send_multiap_broadcast_message(interface_name);
     return RETURN_OK;
@@ -202,13 +289,22 @@ int handle_autoconf_search (unsigned char *data, unsigned int len)
     mac_address_t dst;
     wifi_ctrl_t *ctrl = NULL;
     char st[64];
-   	char *ifaces[MAX_IFACES] = { "brlan0" , "wl1" ,"wl0.1", "wl0", "wl0.7", "wl1.7","wl2.1","wl1.1"};
-    int supported_service = -1;
+    char *ifaces[MAX_IFACES] = { "brlan0" , "wl1" ,"wl0.1", "wl0", "wl0.7", "wl1.7","wl2.1","wl1.1"};
+    //int supported_service = -1;
+    unsigned char buff[128] = {0};
+    multiap_supported_srv_t *srv = (multiap_supported_srv_t *)buff;
     int device_supporting_service = get_service_type();
     wifi_util_error_print(WIFI_CTRL,"device_supporting_service = %d: %s:%d\n",device_supporting_service,__func__,__LINE__);
-    get_service_type_tlv(data,len, &supported_service); 
-    wifi_util_error_print(WIFI_CTRL,"supported_service = %d: %s:%d\n",supported_service,__func__,__LINE__);
-    if(device_supporting_service == multiap_service_type_extender || supported_service == multiap_service_type_extender)
+    //get_service_type_tlv(data,len, &supported_service); 
+    //wifi_util_error_print(WIFI_CTRL,"supported_service = %d: %s:%d\n",supported_service,__func__,__LINE__);
+    //if(device_supporting_service == multiap_service_type_extender || supported_service == multiap_service_type_extender)
+    if (parse_multiap_tlv(data, len, multiap_tlv_type_supported_service, srv, sizeof(buff)) < 0)
+    {
+       wifi_util_error_print(WIFI_CTRL, "Service type TLV not found\n");
+       return -1;
+    }
+    wifi_util_error_print(WIFI_CTRL,"IEEE1905: supported_service = %d: hex value = 0x%x .%s:%d\n",srv->supported_service[0],srv->supported_service[0],__func__,__LINE__);
+    if(device_supporting_service == multiap_service_type_extender || srv->supported_service[0] == multiap_service_type_extender)
     {
         wifi_util_error_print(WIFI_CTRL,"either supporting service or supported service is extender so not replying\n");
         return -1;
@@ -218,7 +314,12 @@ int handle_autoconf_search (unsigned char *data, unsigned int len)
     state =  multiap_state_completed;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    get_al_mac_address(data,len, dst); 
+    //get_al_mac_address(data,len, dst); 
+    //Extract AL MAC address
+    if (parse_multiap_tlv(data, len, multiap_tlv_type_al_mac_address, &dst, sizeof(mac_address_t)) < 0 ) {
+        wifi_util_error_print(WIFI_CTRL, "AL MAC address TLV not found\n");
+        return -1;
+    }
     uint8_mac_to_string_mac(dst,st);
     wifi_util_error_print(WIFI_CTRL,"Enter %s:%d sender mac=%s len got =%ld\n",__func__,__LINE__,st,len);
     for (int i = 0; i < MAX_IFACES; ++i) {
@@ -241,7 +342,8 @@ int handle_autoconf_search_resp (unsigned char *data, unsigned int len)
 {
     wifi_util_error_print(WIFI_CTRL,"Enter %s:%d\n",__func__,__LINE__);
     //mac_address_t dst;
-    unsigned int offset = 0;
+    //unsigned int offset = 0;
+    int tlv_len;
     unsigned int itr = 0,itrj = 0;
     mac_address_t mac;
     int vap_index = 0;
@@ -256,11 +358,20 @@ int handle_autoconf_search_resp (unsigned char *data, unsigned int len)
     wifi_vap_info_map_t *wifi_vap_map = NULL;
 
     memset(macfilterkey, 0, sizeof(macfilterkey));
-    get_sta_mac_address(data,len,buffer, &offset); 
+    //get_sta_mac_address(data,len,buffer, &offset); 
     //uint8_mac_to_string_mac(dst,st);
-    wifi_util_error_print(WIFI_CTRL,"Enter %s:%d received sta_mac_addr offset=%d\n",__func__,__LINE__,offset);
-	//This is the retriving mechanism from the TLV
-    int total_macs = offset / MAC_ADDR_LEN;
+    //wifi_util_error_print(WIFI_CTRL,"Enter %s:%d received sta_mac_addr offset=%d\n",__func__,__LINE__,offset);
+    //This is the retriving mechanism from the TLV
+    //int total_macs = offset / MAC_ADDR_LEN;
+    // Extract STA MAC addresses 
+    tlv_len = parse_multiap_tlv(data, len, multiap_tlv_type_sta_mac_addr, buffer, sizeof(buffer));
+    if (tlv_len < 0) {
+        wifi_util_error_print(WIFI_CTRL, "STA MAC address TLV not found\n");
+        return -1;
+    }
+    //This is the retriving mechanism from the TLV
+    int total_macs = tlv_len / MAC_ADDR_LEN; 
+
     for (int i = 0; i < total_macs; ++i) {
         memcpy(mac, &buffer[i * MAC_ADDR_LEN], MAC_ADDR_LEN);
         to_mac_str(mac, new_mac_str);
@@ -472,6 +583,7 @@ int send_frame(unsigned char *buff, unsigned int len, bool multicast,  char *ifn
     unsigned char buff[MAX_BUFF_SZ];
     unsigned int sz;
     int i = 0;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_CTRL,"%s:%d: ifname = %s\n",__func__, __LINE__,ifname);
     //state = multiap_state_none;
     if(multiap_service_type_extender == get_service_type() || state != multiap_state_none)
@@ -492,7 +604,7 @@ int send_frame(unsigned char *buff, unsigned int len, bool multicast,  char *ifn
         sleep(1);
     }
     //state = multiap_state_none;
-    wifi_util_info_print(WIFI_CTRL,"autoconfig_search send successful and state =%d \n",state);
+    wifi_util_info_print(WIFI_CTRL,"IEEE1905: autoconfig_search send successful and state =%d \n",state);
     // After sending for Autofconfig search for 50 times if no reply is seen then the other device is in extender mode
       apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
 }

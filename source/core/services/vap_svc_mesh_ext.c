@@ -1646,7 +1646,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
     /* first update the internal cache */
     index = get_radio_index_for_vap_index(svc->prop, sta_data->stats.vap_index);
-    wifi_util_info_print(WIFI_CTRL,"%s:%d - radio index %d, VAP index %d connect_status : %s\n",
+    wifi_util_info_print(WIFI_CTRL,"%s:%d IEEE1905: - radio index %d, VAP index %d connect_status : %s\n",
         __func__, __LINE__, index, sta_data->stats.vap_index,
         ext_conn_status_to_str(sta_data->stats.connect_status));
     vap_map = &mgr->radio_config[index].vaps.vap_map;
@@ -1911,7 +1911,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             state =  multiap_state_none;
 
             apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
-            wifi_util_error_print(WIFI_CTRL, "%s:%d interface_name=%s after sending 1905 frame\n", __func__, __LINE__,sta_data->interface_name);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d IEEE1905: interface_name=%s after sending 1905 frame\n", __func__, __LINE__,sta_data->interface_name);
         }
     #endif
     

@@ -2954,17 +2954,19 @@ void start_station_vaps(bool is_private,bool rf_status)
 
     unsigned int num_vaps = get_list_of_mesh_sta(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS,
         &vap_names[0]);
-    if (rf_status && !is_private) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d RF is down creating station with Hotspot credentials\n");
+    wifi_util_info_print(WIFI_CTRL,"IEEE1905: num_vaps = %d .\n",num_vaps);
+    if (rf_status && !is_private) {//if rf_status is true && is_private is false, then calls xfinity
+        wifi_util_info_print(WIFI_CTRL,"%s:%d IEEE1905: RF is down creating station with Hotspot credentials\n");
 	    create_station_with_xfinity_credentials(data,num_vaps,vap_names);
     }
     else if (rf_status) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d creating station with private credentials\n");
+        wifi_util_info_print(WIFI_CTRL,"%s:%d IEEE1905: creating station with private credentials\n");
         private_num_vaps = get_list_of_private_ssid(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS, &private_vap_names[0]);
+	wifi_util_info_print(WIFI_CTRL,"IEEE1905: private_num_vaps = %d .\n",private_num_vaps);
         create_station_with_private_credentials(data,num_vaps,private_num_vaps,private_vap_names);
     }
     else {
-        wifi_util_dbg_print(WIFI_CTRL,"station vaps going back to default case \n");
+        wifi_util_dbg_print(WIFI_CTRL,"IEEE1905: station vaps going back to default case \n");
         snprintf(data->u.decoded.radios[radio_index]
             .vaps.vap_map.vap_array[vap_array_index]
             .u.sta_info.ssid,
@@ -3006,7 +3008,7 @@ void start_station_vaps(bool is_private,bool rf_status)
     
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta) ==
         webconfig_error_none) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __FUNCTION__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: webconfig_encode success\n", __FUNCTION__, __LINE__);
         str = data->u.encoded.raw;
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
             wifi_event_webconfig_set_data_dml, NULL);
