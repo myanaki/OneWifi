@@ -62,7 +62,7 @@ int multiap_init(wifi_app_t *app, unsigned int create_flag)
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }
-    wifi_util_info_print(WIFI_APPS, "%s:%d: Init multiap_app \n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d: IEEE1905: Init multiap_app \n", __func__, __LINE__);
 
     return RETURN_OK;
 }
@@ -161,6 +161,7 @@ int get_service_type()
 int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Start.\n", __func__, __LINE__);
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl->rf_status_down || (ctrl->network_mode == rdk_dev_mode_type_ext)) {
@@ -169,7 +170,7 @@ int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         return RETURN_OK;
     }
 
-    ctrl->multi_ap_sta_enabled = true;
+    ctrl->multiap_sta_enabled = true;
     receive_multiap_message();
     //start the station vaps only if none of the station is connected to vaps because in XLE when its in GW mode(with WAN failover) 
     // stations are connected to the GW then we should not start the station vaps
@@ -180,9 +181,10 @@ int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEE1905: Stop.\n", __func__, __LINE__);
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    ctrl->multi_ap_sta_enabled = false;
+    ctrl->multiap_sta_enabled = false;
     start_station_vaps(true,false);
     return RETURN_OK;
 }
@@ -190,6 +192,7 @@ int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Timeout.\n", __func__, __LINE__);
     char* interface_name = (char*)arg;
     send_multiap_broadcast_message(interface_name);
     return RETURN_OK;
@@ -472,6 +475,7 @@ int send_frame(unsigned char *buff, unsigned int len, bool multicast,  char *ifn
     unsigned char buff[MAX_BUFF_SZ];
     unsigned int sz;
     int i = 0;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_CTRL,"%s:%d: ifname = %s\n",__func__, __LINE__,ifname);
     //state = multiap_state_none;
     if(multiap_service_type_extender == get_service_type() || state != multiap_state_none)
@@ -492,7 +496,7 @@ int send_frame(unsigned char *buff, unsigned int len, bool multicast,  char *ifn
         sleep(1);
     }
     //state = multiap_state_none;
-    wifi_util_info_print(WIFI_CTRL,"autoconfig_search send successful and state =%d \n",state);
+    wifi_util_info_print(WIFI_CTRL,"IEEE1905: autoconfig_search send successful and state =%d \n",state);
     // After sending for Autofconfig search for 50 times if no reply is seen then the other device is in extender mode
       apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
 }
