@@ -35,7 +35,10 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_base.h"
 #include "wifi_stubs.h"
-
+#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
+#include "wifi_multiap.h"
+extern volatile multiap_state_t state;
+#endif
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
 
@@ -486,7 +489,7 @@ int process_udhcp_ip_check(vap_svc_t *svc)
     ext = &svc->u.ext;
     
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status value : %d\n", __func__, __LINE__, ctrl->rf_status_down);
-    if (ctrl->rf_status_down == false) {
+    if (!(ctrl->rf_status_down) && !(ctrl->multiap_sta_enabled)) {
         memset(value, '\0', sizeof(value));
         memset(value, '\0', sizeof(file_name));
         memset(command, '\0', sizeof(command));
@@ -912,7 +915,7 @@ void ext_try_connecting(vap_svc_t *svc)
                 __func__, __LINE__);
             scheduler_cancel_timer_task(ctrl->sched, ext->ext_conn_status_ind_timeout_handler_id);
         }
-        if (ctrl->rf_status_down == false) {
+        if (!(ctrl->rf_status_down) && !(ctrl->multiap_sta_enabled)) {
             scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_conn_status_ind_timeout_handler_id,
                 process_ext_connect_event_timeout, svc, EXT_CONN_STATUS_IND_TIMEOUT, 1, FALSE);
         } else {
@@ -1231,7 +1234,7 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
         update_vap_hal_prop_bridge_name(svc, tgt_vap_map);
         wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d Ignite-Enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, map->vap_array[i].u.sta_info.ignite_enabled);
         publish_endpoint_enable();
-        if (ctrl->rf_status_down == true) {
+        if ((ctrl->rf_status_down) || (trl->multiap_sta_enabled)) {
             ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
                  __LINE__);
             wifi_util_info_print(WIFI_CTRL, "%s:%d sta is enabled starting the station vaps\n", __FUNCTION__, __LINE__);
@@ -1902,6 +1905,16 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
             return RETURN_ERR;
         }
+    #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
+        if (sta_data->stats.connect_status == wifi_connection_status_connected) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d interface_name=%s before sending 1905 frame\n", __func__, __LINE__,sta_data->interface_name);
+            state =  multiap_state_none;
+
+            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d interface_name=%s after sending 1905 frame\n", __func__, __LINE__,sta_data->interface_name);
+        }
+    #endif
+    
     }
 
     if (candidate != NULL) {

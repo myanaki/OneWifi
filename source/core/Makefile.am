@@ -165,6 +165,10 @@ if ONEWIFI_CAC_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/cac/wifi_cac.c
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/cac/
 endif
+if ONEWIFI_MULTIAP_APP_SUPPORT
+OneWifi_SOURCES += $(top_srcdir)/source/apps/multi_ap/wifi_multiap.c
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+endif
 
 if USE_DML_SOURCES
 if ONEWIFI_DML_SUPPORT

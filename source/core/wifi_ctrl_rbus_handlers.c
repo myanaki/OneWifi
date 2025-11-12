@@ -146,7 +146,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     }
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
-    start_station_vaps(rf_status);
+    start_station_vaps(false,rf_status);
 
     return rc;
 
@@ -365,6 +365,30 @@ int notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, char *threshold, ma
     }
     return RETURN_OK;
 }
+int set_to_extender_mode(bus_handle_t *handle, const char *paramNames,unsigned int data_value,int type)
+{
+    int rc = RETURN_ERR;
+    raw_data_t data;
+    if (type == 1) {
+    data.data_type = bus_data_type_uint32;
+    data.raw_data.u32 = data_value;
+    }
+    else {
+    data.data_type = bus_data_type_int32;
+    data.raw_data.i32 = data_value;
+    }
+
+    rc = get_bus_descriptor()->bus_set_fn(handle, paramNames, &data);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_MGR, "[%s:%d] bus: bus_set_fn error param: %s\r\n", __func__,
+            __LINE__, paramNames);
+        return RETURN_ERR;
+    }
+    wifi_util_error_print(WIFI_MGR, "[%s:%d] bus: wifi bus set[%s]:value:%d\r\n", __func__, __LINE__,
+        paramNames, data_value);
+    return RETURN_OK;
+}
+
 
 int notify_hotspot(wifi_ctrl_t *ctrl, assoc_dev_data_t *assoc_device)
 {

@@ -53,5 +53,9 @@ libCcspWifiAgent_sbapi_la_CPPFLAGS += -I$(top_srcdir)/source/platform/dbus -I${P
 else
 libCcspWifiAgent_sbapi_la_CPPFLAGS += -I$(top_srcdir)/source/platform/rdkb
 endif
+if ONEWIFI_MULTIAP_APP_SUPPORT
+ libCcspWifiAgent_sbapi_la_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+endif
+
 libCcspWifiAgent_sbapi_la_SOURCES = cosa_dbus_api.c cosa_wifi_apis.c pack_file.c cosa_logging_apis.c
 libCcspWifiAgent_sbapi_la_LDFLAGS = -lccsp_common -lhal_wifi -lavro -lmsgpackc -ltrower-base64 -luuid -llibparodus -lutapi -lutctx -lsecure_wrapper -lwebconfig_framework -lprint_uptime -lev -lwifi_bus

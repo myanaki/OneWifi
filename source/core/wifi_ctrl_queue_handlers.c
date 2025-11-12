@@ -2630,6 +2630,15 @@ void process_device_mode_command_event(int device_mode)
         update_wifi_global_config(global_param);
         update_wifi_vap_config(device_mode);
         if (device_mode == rdk_dev_mode_type_ext) {
+            if (ctrl-> multiap_sta_enabled) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: multi_ap_sta_enabled: %d\n", __func__, __LINE__,
+                ctrl-> multiap_sta_enabled);
+                ctrl-> multiap_sta_enabled = false;
+                // Stop the station when its in extender mode
+                apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+
+            }
+
             if (is_sta_enabled() == true) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
                 start_extender_vaps();
@@ -2637,6 +2646,11 @@ void process_device_mode_command_event(int device_mode)
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta disabled\n", __func__, __LINE__);
             }
         } else if (device_mode == rdk_dev_mode_type_gw) {
+            // This has not been tested we have to test this in XLE mode 
+            // check when the XLE goes in GW mode and WANFAILOVER mode then will the stations be connected to GW or not
+            //Based on this we have to take the action
+            ctrl-> multiap_sta_enabled = true;
+            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
             if (is_sta_enabled() == false) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
                 stop_extender_vaps();

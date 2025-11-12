@@ -4700,3 +4700,26 @@ int mac_address_from_name(const char *ifname, mac_address_t mac)
 
     return 0;
 }
+int get_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index,mac_address_t mac)
+{
+    int index;
+    int num_vaps;
+    wifi_interface_name_idex_map_t *if_prop;
+    char st[64] = "";
+    TOTAL_INTERFACES(num_vaps, wifi_prop);
+    if_prop = wifi_prop->interface_map;
+
+    for (index = 0; index < num_vaps; ++index) {
+        if (if_prop->rdk_radio_index == radio_index) {
+            if (!strncmp(if_prop->vap_name, "mesh_sta", strlen("mesh_sta"))) {
+               mac_address_from_name(if_prop->interface_name,mac);
+               uint8_mac_to_string_mac(mac,st);
+               wifi_util_info_print(WIFI_CTRL,"%s:%d and interface_name=%s mac address=%s\n",__func__,__LINE__,if_prop->interface_name,st);
+                break;
+            }
+        }
+        if_prop++;
+    }
+
+    return 0;
+}
