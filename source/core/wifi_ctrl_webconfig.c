@@ -2956,11 +2956,11 @@ void start_station_vaps(bool is_private,bool rf_status)
         &vap_names[0]);
     wifi_util_info_print(WIFI_CTRL,"IEEE1905: num_vaps = %d .\n",num_vaps);
     if (rf_status && !is_private) {//if rf_status is true && is_private is false, then calls xfinity
-        wifi_util_info_print(WIFI_CTRL,"%s:%d IEEE1905: RF is down creating station with Hotspot credentials\n");
+        wifi_util_info_print(WIFI_CTRL,"%s:%d IEEE1905: RF is down creating station with Hotspot credentials\n",__FUNCTION__, __LINE__);
 	    create_station_with_xfinity_credentials(data,num_vaps,vap_names);
     }
     else if (rf_status) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d IEEE1905: creating station with private credentials\n");
+        wifi_util_info_print(WIFI_CTRL,"%s:%d IEEE1905: creating station with private credentials\n",__FUNCTION__, __LINE__);
         private_num_vaps = get_list_of_private_ssid(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS, &private_vap_names[0]);
 	wifi_util_info_print(WIFI_CTRL,"IEEE1905: private_num_vaps = %d .\n",private_num_vaps);
         create_station_with_private_credentials(data,num_vaps,private_num_vaps,private_vap_names);
