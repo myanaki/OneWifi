@@ -26,6 +26,7 @@ extern "C" {
 #define MAX_BUFF_SZ  1024
 #define ETH_P_1905      0x893a
 #define CTRL_CAP_SZ  8
+#define MAX_AUTOCONFIG_RETRIES  50
 
 typedef struct {
      void *data;

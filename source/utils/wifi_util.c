@@ -490,6 +490,53 @@ int get_number_of_interfaces(wifi_platform_property_t *wifi_prop)
     return num_vaps;
 }
 
+/*********************************************************************************/
+/*                                                                               */
+/* FUNCTION NAME : WaitForDuration                                               */
+/*                                                                               */
+/* DESCRIPTION   : This function makes the calling thread wait for a particular */
+/*                 time interval using pthread_cond_timedwait                    */
+/*                                                                               */
+/* INPUT         : timeInMs - time to wait in milliseconds                       */
+/*                                                                               */
+/* OUTPUT        : NONE                                                          */
+/*                                                                               */
+/* RETURN VALUE  : 0 on success, error code on failure                           */
+/*                                                                               */
+/*********************************************************************************/
+int WaitForDuration(int timeInMs)
+{
+    struct timespec ts;
+    pthread_condattr_t cond_attr;
+    pthread_cond_t cond;
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    int ret;
+
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    /* Add wait duration */
+    if (timeInMs > 1000) {
+        ts.tv_sec += (timeInMs / 1000);
+    } else {
+        ts.tv_nsec = ts.tv_nsec + (timeInMs * 1000000);  // Convert ms to ns
+        ts.tv_sec = ts.tv_sec + ts.tv_nsec / 1000000000L;
+        ts.tv_nsec = ts.tv_nsec % 1000000000L;
+    }
+
+    pthread_mutex_lock(&mutex);
+    ret = pthread_cond_timedwait(&cond, &mutex, &ts);
+    pthread_mutex_unlock(&mutex);
+
+    pthread_cond_destroy(&cond);
+    pthread_mutex_destroy(&mutex);
+    
+    return ret;
+}
+
 BOOL wifi_util_is_vap_index_valid(wifi_platform_property_t *wifi_prop, int vap_index)
 {
     wifi_interface_name_idex_map_t *prop;

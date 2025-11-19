@@ -270,6 +270,7 @@ typedef struct {
 
 /* utility functions declarations */
 int get_number_of_radios(wifi_platform_property_t *wifi_prop);
+int WaitForDuration(int timeInMs);
 int get_total_number_of_vaps(wifi_platform_property_t *wifi_prop);
 bool get_radio_presence(wifi_platform_property_t *wifi_prop, int index);
 char *get_vap_name(wifi_platform_property_t *wifi_prop, int vap_index);
