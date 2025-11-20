@@ -276,7 +276,7 @@ int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 
 int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Timeout.\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: inside multiap_event_exec_timeout\n", __func__, __LINE__);
     char* interface_name = (char*)arg;
     send_multiap_broadcast_message(interface_name);
     return RETURN_OK;
@@ -583,6 +583,7 @@ int send_frame(unsigned char *buff, unsigned int len, bool multicast,  char *ifn
     unsigned char buff[MAX_BUFF_SZ];
     unsigned int sz;
     int i = 0;
+    wifi_util_info_print(WIFI_CTRL,"IEEE1905: Inside send_multiap_broadcast_message\n");
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_CTRL,"%s:%d: ifname = %s\n",__func__, __LINE__,ifname);
     //state = multiap_state_none;

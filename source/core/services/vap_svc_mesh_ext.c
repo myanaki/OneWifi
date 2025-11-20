@@ -1639,6 +1639,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     ext = &svc->u.ext;
 
     ext->conn_retry = 0;
+    wifi_util_info_print(WIFI_CTRL,"IEEE1905: inside process_ext_sta_conn_status fun. \n");
     if (ext->ext_conn_status_ind_timeout_handler_id != 0) {
         scheduler_cancel_timer_task(ctrl->sched, ext->ext_conn_status_ind_timeout_handler_id);
         ext->ext_conn_status_ind_timeout_handler_id = 0;
@@ -1985,6 +1986,7 @@ int process_ext_channel_change(vap_svc_t *svc, void *arg)
 
 int process_ext_hal_ind(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg)
 {
+    wifi_util_info_print(WIFI_CTRL,"IEEE1905: inside process_ext_hal_ind fun. sub_type =%d \n",sub_type);
     switch (sub_type) {
     case wifi_event_scan_results:
         process_ext_scan_results(svc, arg);
@@ -2069,6 +2071,7 @@ int process_ext_webconfig(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *a
 int vap_svc_mesh_ext_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type,
     vap_svc_event_t event, void *arg)
 {
+    wifi_util_info_print(WIFI_CTRL,"IEEE1905: inside vap_svc_mesh_ext_event fun. Type = %d\n", type);
     switch (type) {
     case wifi_event_type_exec:
         process_ext_exec(svc, sub_type, arg);

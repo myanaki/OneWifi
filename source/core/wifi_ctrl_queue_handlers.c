@@ -109,6 +109,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
 
 void process_scan_results_event(scan_results_t *results, unsigned int len)
 {
+    wifi_util_info_print(WIFI_CTRL,"IEEE1905: Inside process_scan_results_event fun \n");
     wifi_ctrl_t *ctrl;
     vap_svc_t *ext_svc;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
@@ -3677,6 +3678,7 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
 {
     bool nop_start_reboot = 0;
     unsigned int dfs_timer_secs = 0;
+    wifi_util_info_print(WIFI_CTRL,"IEEE1905: Inside handle_hal_indication fun. subtype =%d \n",subtype);
     switch (subtype) {
     case wifi_event_hal_unknown_frame:
         process_unknown_frame_event(data, len);

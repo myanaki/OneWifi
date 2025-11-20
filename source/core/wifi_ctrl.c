@@ -297,7 +297,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     time_t  time_diff;
     int rc = 0;
     wifi_event_t *event = NULL;
-
+wifi_util_info_print(WIFI_CTRL,"IEEE1905: Inside main ctrl_queue_loop fun. \n");
     pthread_mutex_lock(&ctrl->queue_lock);
     while (ctrl->exit_ctrl == false) {
 
@@ -324,6 +324,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                     continue;
                 }
                 pthread_mutex_unlock(&ctrl->queue_lock);
+                wifi_util_info_print(WIFI_CTRL,"IEEE1905: event->event_type  =%d \n",event->event_type);
                 switch (event->event_type) {
                     case wifi_event_type_webconfig:
                         handle_webconfig_event(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
