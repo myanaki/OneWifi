@@ -337,51 +337,6 @@ unsigned long getCurrentTimeInMicroSeconds()
     return timestamp_usec;
 }
 
-/*********************************************************************************/
-/*                                                                               */
-/* FUNCTION NAME : WaitForDuration                                               */
-/*                                                                               */
-/* DESCRIPTION   : This function makes the calling thread to wait for particular */
-/*                 time interval                                                 */
-/*                                                                               */
-/* INPUT         : timeInMs - time to wait                                       */
-/*                                                                               */
-/* OUTPUT        : NONE                                                          */
-/*                                                                               */
-/* RETURN VALUE  : TRUE / FALSE                                                  */
-/*                                                                               */
-/*********************************************************************************/
-
-int WaitForDuration (int timeInMs)
-{
-    struct timespec   ts;
-    pthread_condattr_t  cond_attr;
-    pthread_cond_t      cond;
-    pthread_mutex_t     mutex = PTHREAD_MUTEX_INITIALIZER;
-    int     ret;
-
-    pthread_condattr_init(&cond_attr);
-    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
-    pthread_cond_init(&cond, &cond_attr);
-    pthread_condattr_destroy(&cond_attr);
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-
-    /* Add wait duration*/
-    if ( timeInMs > 1000 ) {
-        ts.tv_sec += (timeInMs/1000);
-    } else {
-        ts.tv_nsec = ts.tv_nsec + (timeInMs*CONVERT_MILLI_TO_NANO);
-        ts.tv_sec = ts.tv_sec + ts.tv_nsec / 1000000000L;
-        ts.tv_nsec = ts.tv_nsec % 1000000000L;
-    }
-    pthread_mutex_lock(&mutex);
-    ret = pthread_cond_timedwait(&cond, &mutex, &ts);
-    pthread_mutex_unlock(&mutex);
-
-    return ret;
-}
-
-
 static void active_msmt_set_status_desc(const char *func, unsigned char *plan_id, unsigned int step_id,
     unsigned char *dst_mac, char *msg)
 {
@@ -2065,7 +2020,7 @@ void calculate_throughput()
         SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_SUCCEED);
     }
     /* Set CPU free for a while */
-    WaitForDuration(WIFI_BLASTER_POST_STEP_TIMEOUT);
+    WaitForTimeout(WIFI_BLASTER_POST_STEP_TIMEOUT);
 }
 
 static int start_worker_thread(wifi_actvie_msmt_t *active_msmt)

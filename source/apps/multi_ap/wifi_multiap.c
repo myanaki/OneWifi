@@ -583,6 +583,7 @@ int send_frame(unsigned char *buff, unsigned int len, bool multicast,  char *ifn
     unsigned char buff[MAX_BUFF_SZ];
     unsigned int sz;
     int i = 0;
+    int wait_ret;
     wifi_util_info_print(WIFI_CTRL,"IEEE1905: Inside send_multiap_broadcast_message\n");
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_CTRL,"%s:%d: ifname = %s\n",__func__, __LINE__,ifname);
@@ -602,7 +603,15 @@ int send_frame(unsigned char *buff, unsigned int len, bool multicast,  char *ifn
         }
 		i++;
         wifi_util_info_print(WIFI_CTRL,"%s:%d: state in while loop = %d and iteration =%d\n",__func__, __LINE__,state,i);
-        sleep(1);
+        // Wait 1 second between retries
+        wait_ret = WaitForTimeout(1000);
+        if (wait_ret == 0) {
+        // Shutdown signal received
+        break;
+        } else if (wait_ret != ETIMEDOUT) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: WaitForTimeout failed with error: %d\n",__func__, __LINE__, wait_ret);
+        break;
+        }
     }
     //state = multiap_state_none;
     wifi_util_info_print(WIFI_CTRL,"IEEE1905: autoconfig_search send successful and state =%d \n",state);

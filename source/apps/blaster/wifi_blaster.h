@@ -145,7 +145,6 @@ void ResetActiveMsmtStepInstances(void);
 
 unsigned long getCurrentTimeInMicroSeconds();
 int isVapEnabled (int wlanIndex);
-int WaitForDuration (int timeInMs);
 void WiFiBlastClient(void);
 void process_active_msmt_diagnostics (int ap_index);
 
