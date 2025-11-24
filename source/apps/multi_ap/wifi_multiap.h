@@ -23,23 +23,26 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#define MAX_BUFF_SZ  1024
-#define ETH_P_1905      0x893a
-#define CTRL_CAP_SZ  8
+#define MAX_BUFF_SZ 1024
+#define ETH_P_1905 0x893a
+#define CTRL_CAP_SZ 8
+#define MAX_IFACES 8
+#define MAX_AUTOCONFIG_RETRIES 50 // Maximum autoconfiguration search attempts
+#define AUTO_CFG_RETRY_MS 1000 // Retry interval in milliseconds
 
 typedef struct {
-     void *data;
+    void *data;
 } multiap_data_t;
 
 typedef enum {
-    vsz_event_id_wan_up=2,
-    vsz_event_id_autoconfig_req=6,
-    vsz_event_id_autoconfig_resp=7,
-    vsz_event_id_extender_mode=11,
-}vsz_event_id_t;
+    vsz_event_id_wan_up = 2,
+    vsz_event_id_autoconfig_req = 6,
+    vsz_event_id_autoconfig_resp = 7,
+    vsz_event_id_extender_mode = 11,
+} vsz_event_id_t;
 
 typedef struct {
-    vsz_event_id_t  id;
+    vsz_event_id_t id;
     unsigned char data[MAX_BUFF_SZ - sizeof(vsz_event_id_t)];
 } web_event_t;
 
@@ -53,26 +56,26 @@ typedef enum {
     multiap_state_search_rsp_pending,
     multiap_state_completed,
 } multiap_state_t;
-typedef char    multiap_short_string_t[64];
+typedef char multiap_short_string_t[64];
 typedef unsigned char multiap_enum_type_t;
 
 typedef struct {
-    mac_address_t   dst;
-    mac_address_t   src;
-    unsigned short  type;
-  } __attribute__((__packed__)) multiap_raw_hdr_t;
+    mac_address_t dst;
+    mac_address_t src;
+    unsigned short type;
+} __attribute__((__packed__)) multiap_raw_hdr_t;
 
 typedef enum {
-    multiap_freq_band_24,    //IEEE-multiap-1-2013 table 6-23
+    multiap_freq_band_24, // IEEE-multiap-1-2013 table 6-23
     multiap_freq_band_5,
     multiap_freq_band_60,
     multiap_freq_band_unknown
-  }multiap_freq_band_t;
+} multiap_freq_band_t;
 
 typedef struct {
-     unsigned char   type;
-     unsigned short  len;
-     unsigned char   value[0];
+    unsigned char type;
+    unsigned short len;
+    unsigned char value[0];
 } __attribute__((__packed__)) multiap_tlv_t;
 
 typedef enum {
@@ -82,35 +85,35 @@ typedef enum {
     multiap_service_type_gateway = 98,
     multiap_service_type_extender = 99,
     multi_service_type_none
-  } multiap_service_type_t;
+} multiap_service_type_t;
 
 typedef struct {
     unsigned char ver;
-    unsigned char   reserved;
-    unsigned short  type;
-    unsigned short  id;
-    unsigned char   frag_id;
-    unsigned char   reserved_field:6;
-    unsigned char   relay_ind:1;
-    unsigned char   last_frag_ind:1;
-  } __attribute__((__packed__)) multiap_cmdu_t;
+    unsigned char reserved;
+    unsigned short type;
+    unsigned short id;
+    unsigned char frag_id;
+    unsigned char reserved_field : 6;
+    unsigned char relay_ind : 1;
+    unsigned char last_frag_ind : 1;
+} __attribute__((__packed__)) multiap_cmdu_t;
 
 typedef enum {
     multiap_profile_type_reserved,
     multiap_profile_type_1,
     multiap_profile_type_2,
-     multiap_profile_type_3,
-  } multiap_profile_type_t;
+    multiap_profile_type_3,
+} multiap_profile_type_t;
 
 typedef struct {
-    unsigned char  onboarding_proto;
-    unsigned char  integrity_algo;
-    unsigned char  encryption_algo;
+    unsigned char onboarding_proto;
+    unsigned char integrity_algo;
+    unsigned char encryption_algo;
 } __attribute__((__packed__)) multiap_ieee_1905_security_cap_t;
 
 typedef struct {
-    unsigned char   value[CTRL_CAP_SZ];
- } __attribute__((__packed__)) multiap_ctrl_cap_t;
+    unsigned char value[CTRL_CAP_SZ];
+} __attribute__((__packed__)) multiap_ctrl_cap_t;
 
 typedef enum {
     multiap_tlv_type_eom = 0,
@@ -128,19 +131,20 @@ typedef enum {
     multiap_tlv_type_radio_id = 0x82,
     multiap_tlv_type_sta_mac_addr = 0x95,
     multiap_tlv_type_ctrl_cap = 0xdd,
-}multiap_tlv_type_t;
+} multiap_tlv_type_t;
 
 typedef struct {
-        unsigned char num_service;
-        unsigned char supported_service[0];
-}  __attribute__((__packed__)) multiap_supported_srv_t;
+    unsigned char num_service;
+    unsigned char supported_service[0];
+} __attribute__((__packed__)) multiap_supported_srv_t;
 
 int create_autoconfig_search(unsigned char *buff, char *ifname);
-int send_frame(unsigned char *buff, unsigned int len, bool multicast,char *ifname);
+int send_frame(unsigned char *buff, unsigned int len, bool multicast, char *ifname);
 void send_multiap_broadcast_message(char *ifname);
 void receive_multiap_message();
-int create_autoconfig_resp_msg(unsigned char *buff,unsigned char *dst,char *interface_name);
-int parse_multiap_tlv(unsigned char *buff, unsigned int len, multiap_tlv_type_t type, void *out_buff, size_t out_len);
+int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *interface_name);
+int parse_multiap_tlv(unsigned char *buff, unsigned int len, multiap_tlv_type_t type,
+    void *out_buff, size_t out_len);
 
 #ifdef __cplusplus
 }
