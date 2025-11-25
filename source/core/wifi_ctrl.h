@@ -268,6 +268,9 @@ typedef struct wifi_ctrl {
     hotspot_cfg_sem_param_t hotspot_sem_param;
     bool                rf_status_down;
     bool                multiap_sta_enabled;
+    #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
+    int multiap_timer_id;
+    #endif
 } wifi_ctrl_t;
 
 

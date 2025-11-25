@@ -197,11 +197,18 @@ int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 
 int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
-    char *interface_name = (char *)arg;
+    //char *interface_name = (char *)arg;
+    // Hardcoded interface names for debugging
+    const char *test_interfaces[] = {"brlan0", "wl1", "wl0"};
+    unsigned int num_interfaces = sizeof(test_interfaces) / sizeof(test_interfaces[0]);
 
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: inside multiap_event_exec_timeout\n", __func__,
         __LINE__);
-    send_multiap_broadcast_message(interface_name);
+    // Send autoconfiguration search on each interface
+    for (unsigned int i = 0; i < num_interfaces; i++) {
+        send_multiap_broadcast_message((char *)test_interfaces[i]);
+    }
+    //send_multiap_broadcast_message(interface_name);
     return RETURN_OK;
 }
 
@@ -506,7 +513,9 @@ void send_multiap_broadcast_message(char *ifname)
     unsigned int sz;
     int i = 0;
     int wait_ret;
-    wifi_util_info_print(WIFI_APPS, "IEEE1905: Inside send_multiap_broadcast_message\n");
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: ===== STARTING BROADCAST MESSAGE =====\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Interface: %s\n", __func__, __LINE__, ifname);
+
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_APPS, "%s:%d: ifname = %s\n", __func__, __LINE__, ifname);
     // state = multiap_state_none;
@@ -519,11 +528,14 @@ void send_multiap_broadcast_message(char *ifname)
 
     state = multiap_state_search_rsp_pending;
     sz = create_autoconfig_search(buff, ifname);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Starting retry loop (max %d attempts)\n",__func__, __LINE__, MAX_AUTOCONFIG_RETRIES);
     while (state != multiap_state_completed && (i <= MAX_AUTOCONFIG_RETRIES)) {
+        wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Attempt %d: Sending frame\n", __func__, __LINE__, i+1);
         if (send_frame(buff, sz, true, ifname) < 0) {
             wifi_util_info_print(WIFI_APPS, "%s:%d: failed, err:%d\n", __func__, __LINE__);
             return;
         }
+        wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Frame sent successfully\n", __func__, __LINE__);
         i++;
         wifi_util_info_print(WIFI_APPS, "%s:%d: state in while loop = %d and iteration =%d\n",
             __func__, __LINE__, state, i);
@@ -537,6 +549,7 @@ void send_multiap_broadcast_message(char *ifname)
                 __func__, __LINE__, wait_ret);
             break;
         }
+        wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: ===== BROADCAST MESSAGE COMPLETED =====\n", __func__, __LINE__);
     }
     // state = multiap_state_none;
     wifi_util_info_print(WIFI_APPS, "IEEE1905: autoconfig_search send successful and state =%d \n",
