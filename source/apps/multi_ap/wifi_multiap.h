@@ -27,8 +27,8 @@ extern "C" {
 #define ETH_P_1905 0x893a
 #define CTRL_CAP_SZ 8
 #define MAX_IFACES 8
-#define MAX_AUTOCONFIG_RETRIES 50 // Maximum autoconfiguration search attempts
-#define AUTO_CFG_RETRY_MS 1000 // Retry interval in milliseconds
+#define MAX_AUTOCONFIG_RETRIES 3 // Maximum autoconfiguration search attempts
+#define AUTO_CFG_RETRY_MS 100 // Retry interval in milliseconds
 
 typedef struct {
     void *data;

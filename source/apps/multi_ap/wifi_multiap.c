@@ -199,11 +199,18 @@ int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
     //char *interface_name = (char *)arg;
     // Hardcoded interface names for debugging
-    const char *test_interfaces[] = {"brlan0", "wl1", "wl0"};
+    static int delay_count = 0;
+    const char *test_interfaces[] = {"brlan0", "wl0.1", "wl1.1"};
     unsigned int num_interfaces = sizeof(test_interfaces) / sizeof(test_interfaces[0]);
 
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: inside multiap_event_exec_timeout\n", __func__,
         __LINE__);
+    delay_count++;
+    if (delay_count < 5) {
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d IEEE1905: delaying autoconfig search sending \n", __func__, __LINE__);
+            return RETURN_OK;
+    }
     // Send autoconfiguration search on each interface
     for (unsigned int i = 0; i < num_interfaces; i++) {
         send_multiap_broadcast_message((char *)test_interfaces[i]);
@@ -523,7 +530,7 @@ void send_multiap_broadcast_message(char *ifname)
         wifi_util_info_print(WIFI_APPS,
             "%s:%d:service type is extender or broadcast message is sent so returning \n", __func__,
             __LINE__);
-        return;
+       // return;
     }
 
     state = multiap_state_search_rsp_pending;
@@ -858,7 +865,8 @@ static void *receive_multicast_message(void *ctx)
                     wifi_util_info_print(WIFI_APPS, "recvfrom \n");
                     continue;
                 }
-                proto_process((unsigned char *)buffer, len);
+                wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: Received Length =  %d \n",__func__, __LINE__, len);
+               // proto_process((unsigned char *)buffer, len);
             }
         }
     }
