@@ -43,6 +43,8 @@
 
 #define FAILOVER_ENABLE "Device.X_RDK_GatewayManagement.Failover.Enable"
 
+static int sockets[MAX_IFACES] = { -1 };
+static int socket_count = 0;
 volatile multiap_state_t state = multiap_state_none;
 
 int multiap_init(wifi_app_t *app, unsigned int create_flag)
@@ -151,7 +153,7 @@ int get_service_type()
         wifi_util_info_print(WIFI_APPS, "Gateway mode  %s:%d\n", __func__, __LINE__);
         return multiap_service_type_gateway;
     }
-    else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+    else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         wifi_util_info_print(WIFI_APPS, "Extender mode  %s:%d\n", __func__, __LINE__);
         return multiap_service_type_extender;
     }
@@ -189,9 +191,19 @@ int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEE1905: Stop.\n", __func__, __LINE__);
+    //Close global sockets
+    for (int i = 0; i < socket_count; i++) {
+        if (sockets[i] > 0) {
+            wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Closing multicast socket\n", __func__, __LINE__);
+            close(sockets[i]);
+            sockets[i] = -1;
+        }
+    }
+    state = multiap_state_none;
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: State reset to none\n", __func__, __LINE__);
     ctrl->multiap_sta_enabled = false;
     start_station_vaps(true, false);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Multiap application stopped\n", __func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -436,7 +448,7 @@ int create_autoconfig_search(unsigned char *buff, char *interface_name)
     tlv = (multiap_tlv_t *)(tmp);
     tlv->type = multiap_tlv_type_supported_service;
     tlv->len = htons(sizeof(multiap_enum_type_t) + 1);
-    tlv->value[0] = get_service_type();
+    tlv->value[0] = 1;                    // Number of services
     memcpy(&tlv->value[1], &service_type, sizeof(multiap_enum_type_t));
 
     tmp += (sizeof(multiap_tlv_t) + sizeof(multiap_enum_type_t) + 1);
@@ -519,7 +531,7 @@ void send_multiap_broadcast_message(char *ifname)
 
     state = multiap_state_search_rsp_pending;
     sz = create_autoconfig_search(buff, ifname);
-    while (state != multiap_state_completed && (i <= MAX_AUTOCONFIG_RETRIES)) {
+    while (state != multiap_state_completed && i <= MAX_AUTOCONFIG_RETRIES) {
         if (send_frame(buff, sz, true, ifname) < 0) {
             wifi_util_info_print(WIFI_APPS, "%s:%d: failed, err:%d\n", __func__, __LINE__);
             return;
@@ -803,11 +815,11 @@ void proto_process(unsigned char *data, unsigned int len)
         break;
     }
 }
+
 static void *receive_multicast_message(void *ctx)
 {
     const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7", "brlan1",
         "wl0.7" };
-    int sockets[MAX_IFACES];
     char buffer[MAX_FRAME_SZ];
     state = multiap_state_none;
 
@@ -817,6 +829,7 @@ static void *receive_multicast_message(void *ctx)
             wifi_util_info_print(WIFI_APPS, "Failed to initialize socket on %s\n", ifaces[i]);
             return NULL;
         }
+        socket_count++;
         wifi_util_info_print(WIFI_APPS, "%s:%d sockets[i]= %d\n", __func__, __LINE__, sockets[i]);
     }
 
@@ -863,6 +876,7 @@ void receive_multiap_message()
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
     ret = pthread_create(&thread_id, &attr, receive_multicast_message, NULL);
+    pthread_attr_destroy(&attr);
     if (ret != 0) {
         wifi_util_error_print(WIFI_APPS, "Failed to create thread\n");
     } else {
