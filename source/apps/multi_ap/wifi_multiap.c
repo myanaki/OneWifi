@@ -34,6 +34,7 @@
 #include <sys/time.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <poll.h>
 
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -60,6 +61,26 @@ int multiap_init(wifi_app_t *app, unsigned int create_flag)
 
 int multiap_deinit(wifi_app_t *app)
 {
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Deinitializing multiap application\n", __func__, __LINE__);
+
+    //Close all global sockets
+    for (int i = 0; i < socket_count; i++) {
+        if (sockets[i] >= 0) {
+            wifi_util_info_print(WIFI_APPS, "%s:%d Closing socket %d\n", __func__, __LINE__, sockets[i]);
+            close(sockets[i]);
+            sockets[i] = -1;
+        }
+    }
+    socket_count = 0;
+    state = multiap_state_none;
+    //Stop station VAPs
+    if (ctrl != NULL) {
+        ctrl->multiap_sta_enabled = false;
+        start_station_vaps(true, false);
+    }
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Multiap application deinitialized\n",
+                       __func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -192,7 +213,7 @@ int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //Close global sockets
     for (int i = 0; i < socket_count; i++) {
-        if (sockets[i] > 0) {
+        if (sockets[i] >= 0) {
             wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Closing multicast socket\n", __func__, __LINE__);
             close(sockets[i]);
             sockets[i] = -1;
@@ -548,7 +569,7 @@ void send_multiap_broadcast_message(char *ifname)
     state = multiap_state_search_rsp_pending;
     sz = create_autoconfig_search(buff, ifname);
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Starting retry loop (max %d attempts)\n",__func__, __LINE__, MAX_AUTOCONFIG_RETRIES);
-    while (state != multiap_state_completed && i <= MAX_AUTOCONFIG_RETRIES) {
+    while (state == multiap_state_search_rsp_pending && i <= MAX_AUTOCONFIG_RETRIES) {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Attempt %d: Sending frame\n", __func__, __LINE__, i+1);
         if (send_frame(buff, sz, true, ifname) < 0) {
             wifi_util_info_print(WIFI_APPS, "%s:%d: failed, err:%d\n", __func__, __LINE__);
@@ -842,43 +863,67 @@ static void *receive_multicast_message(void *ctx)
     char buffer[MAX_FRAME_SZ];
     state = multiap_state_none;
 
+    struct pollfd poll_fds[MAX_IFACES];
+
+    for (int i = 0; i < socket_count; i++) {
+        if (sockets[i] >= 0) {
+            wifi_util_info_print(WIFI_APPS,"%s:%d Closing old socket %d\n",__func__, __LINE__, sockets[i]);
+            close(sockets[i]);
+            sockets[i] = -1;
+        }
+    }
+    socket_count = 0;
+     wifi_util_info_print(WIFI_APPS, "%s:%d Initializing sockets on interfaces\n", __func__, __LINE__);
     for (int i = 0; i < MAX_IFACES; ++i) {
         sockets[i] = create_raw_socket(ifaces[i]);
         if (sockets[i] < 0) {
             wifi_util_info_print(WIFI_APPS, "Failed to initialize socket on %s\n", ifaces[i]);
             return NULL;
         }
+        /* Initialize pollfd entry */
+        poll_fds[i].fd = sockets[i];
+        poll_fds[i].events = POLLIN;
+        poll_fds[i].revents = 0;
+
         socket_count++;
         wifi_util_info_print(WIFI_APPS, "%s:%d sockets[i]= %d\n", __func__, __LINE__, sockets[i]);
     }
 
     while (1) {
-        fd_set readfds;
-        FD_ZERO(&readfds);
-
-        int maxfd = -1;
-        for (int i = 0; i < MAX_IFACES; i++) {
-            FD_SET(sockets[i], &readfds);
-            if (sockets[i] > maxfd)
-                maxfd = sockets[i];
-        }
-
-        wifi_util_info_print(WIFI_APPS, "%s:%d maxfd = %d\n", __func__, __LINE__, maxfd);
-        int ret = select(maxfd + 1, &readfds, NULL, NULL, NULL);
+        wifi_util_info_print(WIFI_APPS, "%s:%d Waiting for data on %d sockets\n", __func__, __LINE__, socket_count);
+        int ret = poll(poll_fds, socket_count, -1); // -1 = infinite timeout
         if (ret < 0) {
-            wifi_util_info_print(WIFI_APPS, "select error");
+            wifi_util_error_print(WIFI_APPS, "%s:%d: Poll error: %d\n", __func__, __LINE__, errno);
             break;
+        } else if (ret == 0) {
+            wifi_util_info_print(WIFI_APPS, "%s:%d poll timeout\n", __func__, __LINE__);
+            continue; // Timeout, continue waiting
         }
 
-        for (int i = 0; i < MAX_IFACES; ++i) {
-            if (FD_ISSET(sockets[i], &readfds)) {
-                ssize_t len = recvfrom(sockets[i], buffer, MAX_FRAME_SZ, 0, NULL, NULL);
+        // Check which sockets have data
+        for (int i = 0; i < socket_count; ++i) {
+            if (poll_fds[i].revents & POLLIN) {
+                wifi_util_info_print(WIFI_APPS, "%s:%d Data available on socket %d\n",
+                     __func__, __LINE__, sockets[i]);
+                ssize_t len = recvfrom(sockets[i], buffer, sizeof(buffer), 0, NULL, NULL);
                 if (len < 0) {
-                    wifi_util_info_print(WIFI_APPS, "recvfrom \n");
+                    wifi_util_error_print(WIFI_APPS, "%s:%d: recvfrom error: %d\n", __func__, __LINE__, errno);
                     continue;
                 }
-                wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: Received Length =  %d \n",__func__, __LINE__, len);
-               // proto_process((unsigned char *)buffer, len);
+                wifi_util_info_print(WIFI_APPS, "%s:%d Received %zd bytes on socket %d\n", 
+                    __func__, __LINE__, len, sockets[i]);
+                proto_process((unsigned char *)buffer, len);
+            }
+            // Check for socket errors
+            if (poll_fds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+                wifi_util_info_print(WIFI_APPS, "%s:%d Socket error on fd %d, revents: 0x%x\n",
+                    __func__, __LINE__, sockets[i], poll_fds[i].revents);
+                close(sockets[i]);
+                sockets[i] = -1;
+                /* Remove from poll list */
+                poll_fds[i].fd = -1;
+                poll_fds[i].events = 0;
+                poll_fds[i].revents = 0;
             }
         }
     }
