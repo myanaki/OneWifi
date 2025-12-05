@@ -46,6 +46,7 @@
 
 static int sockets[MAX_IFACES] = { -1 };
 static int socket_count = 0;
+
 volatile multiap_state_t state = multiap_state_none;
 
 int multiap_init(wifi_app_t *app, unsigned int create_flag)
@@ -188,6 +189,7 @@ int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 {
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: === TESTING START ===\n", __func__, __LINE__);
 
     wifi_util_info_print(WIFI_APPS, "%s:%d Start Exec\n", __func__, __LINE__);
     if (ctrl->rf_status_down || (ctrl->network_mode == rdk_dev_mode_type_ext)) {
@@ -210,6 +212,8 @@ int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 {
     wifi_ctrl_t *ctrl = NULL;
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: === TESTING STOP ===\n", __func__, __LINE__);
+
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //Close global sockets
     for (int i = 0; i < socket_count; i++) {
@@ -239,7 +243,7 @@ int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: inside multiap_event_exec_timeout\n", __func__,
         __LINE__);
     delay_count++;
-    if (delay_count < 5) {
+    if (delay_count < 3) {
         wifi_util_info_print(WIFI_APPS,
             "%s:%d IEEE1905: delaying autoconfig search sending \n", __func__, __LINE__);
             return RETURN_OK;
@@ -912,6 +916,9 @@ static void *receive_multicast_message(void *ctx)
                 }
                 wifi_util_info_print(WIFI_APPS, "%s:%d Received %zd bytes on socket %d\n", 
                     __func__, __LINE__, len, sockets[i]);
+                if (len > 0) {
+                    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Poll test - successfully received data\n", __func__, __LINE__);
+                }
                 proto_process((unsigned char *)buffer, len);
             }
             // Check for socket errors
@@ -927,6 +934,7 @@ static void *receive_multicast_message(void *ctx)
             }
         }
     }
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: receive_multicast_message thread exiting\n", __func__, __LINE__);
     return NULL;
 }
 
