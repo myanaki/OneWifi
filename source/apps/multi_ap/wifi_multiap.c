@@ -216,11 +216,14 @@ int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //Close global sockets
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: socket_count = %d\n", __func__, __LINE__, socket_count);
     for (int i = 0; i < socket_count; i++) {
         if (sockets[i] >= 0) {
             wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Closing multicast socket\n", __func__, __LINE__);
             close(sockets[i]);
             sockets[i] = -1;
+        }else {
+            wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Socket already closed\n", __func__, __LINE__);
         }
     }
     state = multiap_state_none;
@@ -606,37 +609,32 @@ void send_multiap_broadcast_message(char *ifname)
 int set_bp_filter(int sockfd, const char *iface_name)
 {
     struct packet_mreq mreq;
-#define OP_LDH (BPF_LD | BPF_H | BPF_ABS)
-#define OP_LDB (BPF_LD | BPF_B | BPF_ABS)
-#define OP_JEQ (BPF_JMP | BPF_JEQ | BPF_K)
-#define OP_RET (BPF_RET | BPF_K)
+    #define OP_LDH (BPF_LD  | BPF_H   | BPF_ABS)
+    #define OP_LDB (BPF_LD  | BPF_B   | BPF_ABS)
+    #define OP_JEQ (BPF_JMP | BPF_JEQ | BPF_K)
+    #define OP_RET (BPF_RET | BPF_K)
     static struct sock_filter bpfcode[4] = {
-        { OP_LDH, 0, 0, 12 }, // ldh [12]
-        { OP_JEQ, 0, 1, ETH_P_1905 }, // jeq #0x893a, L2, L3
-        {
-         OP_RET, 0,
-         0, 0xffffffff,
-         }, // ret #0xffffffff
-        { OP_RET, 0, 0, 0 }, // ret #0x0
+           { OP_LDH, 0, 0, 12          },  // ldh [12]
+           { OP_JEQ, 0, 1, ETH_P_1905  },  // jeq #0x893a, L2, L3
+           { OP_RET, 0, 0, 0xffffffff,         },  // ret #0xffffffff
+           { OP_RET, 0, 0, 0           },  // ret #0x0
     };
     struct sock_fprog bpf = { 4, bpfcode };
+    wifi_util_info_print(WIFI_CTRL,"%s:%d: IEEE1905: Inside set_bp_filter. \n", __func__, __LINE__);
     if (setsockopt(sockfd, SOL_SOCKET, SO_ATTACH_FILTER, &bpf, sizeof(bpf))) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d: Error in attaching filter, err:%d\n", __func__,
-            __LINE__, errno);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d: IEEE1905: Error in attaching filter, err:%d\n", __func__, __LINE__, errno);
         close(sockfd);
         return -1;
     }
-
     memset(&mreq, 0, sizeof(mreq));
+    mreq.mr_type = PACKET_MR_PROMISC;
     mreq.mr_ifindex = (int)(if_nametoindex(iface_name));
+
     if (setsockopt(sockfd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq))) {
-        wifi_util_info_print(WIFI_APPS,
-            "%s:%d: Error setting promisuous for interface:%s, err:%d\n", __func__, __LINE__,
-            iface_name, errno);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d: IEEE1905: Error setting promisuous for interface:%s, err:%d\n", __func__, __LINE__,iface_name, errno);
         close(sockfd);
         return -1;
     }
-
     return 0;
 }
 
