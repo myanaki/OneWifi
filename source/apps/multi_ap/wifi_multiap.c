@@ -46,6 +46,7 @@
 
 static int sockets[MAX_IFACES] = { -1 };
 static int socket_count = 0;
+pthread_t thread_id;
 
 volatile multiap_state_t state = multiap_state_none;
 
@@ -228,7 +229,10 @@ int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     }
     state = multiap_state_none;
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: State reset to none\n", __func__, __LINE__);
-    
+
+    pthread_cancel(thread_id);     // Force stop receive thread
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Receive thread stopped\n", __func__, __LINE__);    ctrl->multiap_sta_enabled = false;
+
     ctrl->multiap_sta_enabled = false;
     start_station_vaps(true, false);
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Multiap application stopped\n", __func__, __LINE__);
@@ -239,6 +243,7 @@ int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
     //char *interface_name = (char *)arg;
     // Hardcoded interface names for debugging
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     static int delay_count = 0;
     const char *test_interfaces[] = {"brlan0", "wl0.1", "wl1.1"};
     unsigned int num_interfaces = sizeof(test_interfaces) / sizeof(test_interfaces[0]);
@@ -255,6 +260,7 @@ int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     for (unsigned int i = 0; i < num_interfaces; i++) {
         send_multiap_broadcast_message((char *)test_interfaces[i]);
     }
+    apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
     //send_multiap_broadcast_message(interface_name);
     return RETURN_OK;
 }
@@ -563,7 +569,7 @@ void send_multiap_broadcast_message(char *ifname)
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: ===== STARTING BROADCAST MESSAGE =====\n", __func__, __LINE__);
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Interface: %s\n", __func__, __LINE__, ifname);
 
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    //wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_APPS, "%s:%d: ifname = %s\n", __func__, __LINE__, ifname);
     // state = multiap_state_none;
     if (multiap_service_type_extender == get_service_type() || state != multiap_state_none) {
@@ -603,7 +609,7 @@ void send_multiap_broadcast_message(char *ifname)
         state);
     // After sending for Autofconfig search for 50 times if no reply is seen then the other device
     // is in extender mode
-    apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+    //apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
 }
 
 int set_bp_filter(int sockfd, const char *iface_name)
@@ -860,6 +866,10 @@ void proto_process(unsigned char *data, unsigned int len)
 }
 static void *receive_multicast_message(void *ctx)
 {
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7", "brlan1",
         "wl0.7" };
     char buffer[MAX_FRAME_SZ];
@@ -941,7 +951,7 @@ void receive_multiap_message()
     wifi_util_info_print(WIFI_APPS, "receive message \n");
     int ret;
     pthread_attr_t attr;
-    pthread_t thread_id;
+    //pthread_t thread_id;
 
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
