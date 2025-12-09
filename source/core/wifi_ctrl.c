@@ -2249,6 +2249,7 @@ static int run_analytics_event(void* arg)
 #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
 static int run_multiap_event(void* arg)
 {
+    /*
     wifi_ctrl_t *ctrl = NULL;
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -2256,6 +2257,20 @@ static int run_multiap_event(void* arg)
     wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: Triggering multiap exec timeout event\n", __func__, __LINE__);
     apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
   
+    return TIMER_TASK_COMPLETE;
+    */
+    wifi_event_t *event = NULL;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: Triggering multiap exec timeout event\n", __func__, __LINE__);
+    //event = create_wifi_event(sizeof(wifi_csi_dev_t), wifi_event_type_exec, wifi_event_exec_timeout);
+    event = create_wifi_event(0, wifi_event_type_exec, wifi_event_exec_timeout);
+    if (event == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    apps_mgr_event(&ctrl->apps_mgr, event);
+
+    destroy_wifi_event(event);
     return TIMER_TASK_COMPLETE;
 }
 #endif
