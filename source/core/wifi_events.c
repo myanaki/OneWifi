@@ -290,7 +290,7 @@ wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type,
     wifi_event_subtype_t sub_type)
 {
     wifi_event_t *event;
-    wifi_util_info_print(WIFI_CTRL, "%s:%d:IEEE1905: create_wifi_event called with type=%d, sub_type=%d\n",
+    wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: create_wifi_event called with type=%d, sub_type=%d\n",
                      __FUNCTION__, __LINE__, type, sub_type);
     if (type >= wifi_event_type_max) {
         wifi_util_error_print(WIFI_CTRL, "%s %d Invalid event type %d\n", __FUNCTION__, __LINE__,
@@ -375,7 +375,7 @@ wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type,
 
     event->event_type = type;
     event->sub_type = sub_type;
-    wifi_util_info_print(WIFI_CTRL, "%s:%d:IEEE1905: Event created - type=%d, sub_type=%d\n",
+    wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: Event created - type=%d, sub_type=%d\n",
                      __FUNCTION__, __LINE__, event->event_type, event->sub_type);
     return event;
 }

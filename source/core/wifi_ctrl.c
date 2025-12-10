@@ -297,7 +297,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     time_t  time_diff;
     int rc = 0;
     wifi_event_t *event = NULL;
-wifi_util_info_print(WIFI_CTRL,"IEEE1905: Inside main ctrl_queue_loop fun. \n");
+wifi_util_info_print(WIFI_APPS,"IEEE1905: Inside main ctrl_queue_loop fun. \n");
     pthread_mutex_lock(&ctrl->queue_lock);
     while (ctrl->exit_ctrl == false) {
 
@@ -324,7 +324,7 @@ wifi_util_info_print(WIFI_CTRL,"IEEE1905: Inside main ctrl_queue_loop fun. \n");
                     continue;
                 }
                 pthread_mutex_unlock(&ctrl->queue_lock);
-                //wifi_util_info_print(WIFI_CTRL,"IEEE1905: event->event_type  =%d \n",event->event_type);
+                //wifi_util_info_print(WIFI_APPS,"IEEE1905: event->event_type  =%d \n",event->event_type);
                 switch (event->event_type) {
                     case wifi_event_type_webconfig:
                         handle_webconfig_event(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
@@ -1783,7 +1783,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     } else {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to start Wifi Monitor\n", __func__, __LINE__);
     }
-    wifi_util_error_print(WIFI_CTRL,"%s:%d IEEE1905.\n", __func__, __LINE__);
+    wifi_util_error_print(WIFI_APPS,"%s:%d IEEE1905.\n", __func__, __LINE__);
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL);
 #endif
@@ -2247,6 +2247,12 @@ static int run_analytics_event(void* arg)
 }
 
 #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
+static void debug_event_before_appsmgr(wifi_event_t *event)
+{
+    wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905 dummy fun event= %p, event_type=%d, sub_type=%d\n",
+                     __func__, __LINE__, event, event->event_type, event->sub_type);
+
+}
 static int run_multiap_event(void* arg)
 {
     /*
@@ -2254,25 +2260,37 @@ static int run_multiap_event(void* arg)
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: Triggering multiap exec timeout event\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Triggering multiap exec timeout event\n", __func__, __LINE__);
     apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
   
     return TIMER_TASK_COMPLETE;
     */
-    wifi_event_t *event = NULL;
+    wifi_event_t event = {0};
+    wifi_app_t *app = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: Triggering multiap exec timeout event\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Triggering multiap exec timeout event\n", __func__, __LINE__);
     //event = create_wifi_event(sizeof(wifi_csi_dev_t), wifi_event_type_exec, wifi_event_exec_timeout);
-    event = create_wifi_event(0, wifi_event_type_exec, wifi_event_exec_timeout);
+    /*event = create_wifi_event(0, wifi_event_type_exec, wifi_event_exec_timeout);
     if (event == NULL) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d:IEEE1905: memory allocation for event failed.\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: memory allocation for event failed.\n", __func__, __LINE__);
         return RETURN_ERR;
-    }
-    wifi_util_info_print(WIFI_CTRL, "%s:%d:IEEE1905 After create - event_type=%d, sub_type=%d (expected=%d)\n",
-                     __func__, __LINE__, event->event_type, event->sub_type, wifi_event_exec_timeout);
-    apps_mgr_event(&ctrl->apps_mgr, event);
+    }*/
+    event.event_type = wifi_event_type_exec;
+    event.sub_type = wifi_event_exec_timeout;
 
-    destroy_wifi_event(event);
+    wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905 After create -event= %p, event_type=%d, sub_type=%d, (expected=%d)\n",
+                     __func__, __LINE__, &event, event.event_type, event.sub_type, wifi_event_exec_timeout);
+
+    app = get_app_by_inst(&ctrl->apps_mgr, wifi_app_inst_multiap);
+    push_event_to_app_queue(app, &event);
+    debug_event_before_appsmgr(&event);
+
+    //apps_mgr_event(&ctrl->apps_mgr, event);
+
+    wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: before_destroy event= %p, event_type=%d, sub_type=%d, (expected=%d)\n",
+                     __func__, __LINE__, &event, event.event_type, event.    sub_type, wifi_event_exec_timeout);
+
+    //destroy_wifi_event(&event);
     return TIMER_TASK_COMPLETE;
 }
 #endif
@@ -2309,7 +2327,7 @@ static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
     // Add multiap timer task - runs every 60 seconds for testing
     scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, run_multiap_event, NULL, 60000, 0, FALSE);
-    wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
 #endif
 
 #ifdef ONEWIFI_CAC_APP_SUPPORT
