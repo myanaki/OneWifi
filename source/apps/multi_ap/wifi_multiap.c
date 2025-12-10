@@ -966,6 +966,8 @@ void receive_multiap_message()
 }
 int exec_event_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
+    wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905 exec_event_multiap subtype=%d\n",   
+        __func__, __LINE__, sub_type);
     switch (sub_type) {
     case wifi_event_exec_start:
         multiap_event_exec_start(apps, arg);
@@ -976,6 +978,7 @@ int exec_event_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
         break;
 
     case wifi_event_exec_timeout:
+        wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905 Handling timeout event\n", __func__, __LINE__);
         multiap_event_exec_timeout(apps, arg);
         break;
     default:
@@ -988,10 +991,13 @@ int exec_event_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
 
 int multiap_event(wifi_app_t *app, wifi_event_t *event)
 {
+    wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: Received event type=%d, subtype=%d\n",   
+        __func__, __LINE__, event->event_type, event->sub_type);
     switch (event->event_type) {
     case wifi_event_type_webconfig:
         break;
     case wifi_event_type_exec:
+        wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: Forwarding exec event\n", __func__, __LINE__);
         exec_event_multiap(app, event->sub_type, NULL);
         break;
     default:

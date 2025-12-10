@@ -324,7 +324,7 @@ wifi_util_info_print(WIFI_CTRL,"IEEE1905: Inside main ctrl_queue_loop fun. \n");
                     continue;
                 }
                 pthread_mutex_unlock(&ctrl->queue_lock);
-                wifi_util_info_print(WIFI_CTRL,"IEEE1905: event->event_type  =%d \n",event->event_type);
+                //wifi_util_info_print(WIFI_CTRL,"IEEE1905: event->event_type  =%d \n",event->event_type);
                 switch (event->event_type) {
                     case wifi_event_type_webconfig:
                         handle_webconfig_event(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
@@ -2265,9 +2265,11 @@ static int run_multiap_event(void* arg)
     //event = create_wifi_event(sizeof(wifi_csi_dev_t), wifi_event_type_exec, wifi_event_exec_timeout);
     event = create_wifi_event(0, wifi_event_type_exec, wifi_event_exec_timeout);
     if (event == NULL) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d:IEEE1905: memory allocation for event failed.\n", __func__, __LINE__);
         return RETURN_ERR;
     }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d:IEEE1905 After create - event_type=%d, sub_type=%d (expected=%d)\n",
+                     __func__, __LINE__, event->event_type, event->sub_type, wifi_event_exec_timeout);
     apps_mgr_event(&ctrl->apps_mgr, event);
 
     destroy_wifi_event(event);

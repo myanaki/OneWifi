@@ -33,7 +33,6 @@ wifi_app_t *get_app_by_inst(wifi_apps_mgr_t *apps_mgr, wifi_app_inst_t inst)
 {
     char key_str[32];
     wifi_app_t *node = NULL;
-
     snprintf(key_str, sizeof(key_str), "app_%010d", inst);
     node = (wifi_app_t *)hash_map_get(apps_mgr->apps_map, key_str);
 
@@ -85,7 +84,7 @@ void *app_detached_event_func(void *data)
 int push_event_to_app_queue(wifi_app_t *app, wifi_event_t *event)
 {
     wifi_event_t *clone;
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: inside push_event_to_app_queue fun\n", __func__, __LINE__);
     clone_wifi_event(event, &clone);
     if(clone == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s %d failed to clone event\n",__FUNCTION__, __LINE__);
@@ -104,13 +103,14 @@ int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event)
 {
     wifi_app_t	*app = NULL;
     unsigned int i = 0;
-
     // check if the event is unicast to any app
     if (unicast_event_to_apps(event)) {
         i = wifi_app_inst_max;
         while (i) {
             app = get_app_by_inst(apps_mgr, (event->route.u.inst_bit_map & i));
             if ((app != NULL) && (app->desc.rfc == true)) {
+                wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: Calling multiap_event for type %d, app desc %s\n",
+                            __func__, __LINE__, event->event_type, app->desc.desc);
                 (app->desc.create_flag & APP_DETACHED) ? push_event_to_app_queue(app, event):app->desc.event_fn(app, event);
             }
             i = i>>1;
@@ -124,6 +124,8 @@ int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event)
         if ((app->desc.rfc == true)) {
             if (app->desc.reg_events_types & event->event_type) {
                 if ( app->desc.inst != wifi_app_inst_analytics ) {
+                    wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: Calling multiap_event for type %d, app desc %s\n",
+                            __func__, __LINE__, event->event_type, app->desc.desc);
                     (app->desc.create_flag & APP_DETACHED) ? push_event_to_app_queue(app, event):app->desc.event_fn(app, event);
                 }
             }
