@@ -447,7 +447,7 @@ wifi_app_descriptor_t app_desc[] = {
 #endif // ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
 #ifdef ONEWIFI_STA_MGR_APP_SUPPORT
     {
-        wifi_app_inst_sta_mgr, 0,
+        wifi_app_inst_sta_mgr, 1,
         wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
         true, true,
         "Station Manager",
