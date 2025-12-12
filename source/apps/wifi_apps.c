@@ -467,7 +467,7 @@ wifi_app_descriptor_t app_desc[] = {
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
 #ifdef ONEWIFI_MULTIAP_APP_SUPPORT 
  {
-         wifi_app_inst_multiap, 1,
+         wifi_app_inst_multiap, 0,
          wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
          true, true,
          "MultiAp_IEEE1905",

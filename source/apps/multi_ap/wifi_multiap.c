@@ -35,6 +35,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <poll.h>
+#include <sys/prctl.h>
 
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -245,11 +246,9 @@ int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     // Hardcoded interface names for debugging
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     static int delay_count = 0;
-    const char *test_interfaces[] = {"brlan0", "wl0.1", "wl1.1"};
+    const char *test_interfaces[] = {"wl0"};
     unsigned int num_interfaces = sizeof(test_interfaces) / sizeof(test_interfaces[0]);
 
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: inside multiap_event_exec_timeout\n", __func__,
-        __LINE__);
     delay_count++;
     if (delay_count < 3) {
         wifi_util_info_print(WIFI_APPS,
@@ -565,7 +564,7 @@ void send_multiap_broadcast_message(char *ifname)
     unsigned char buff[MAX_BUFF_SZ];
     unsigned int sz;
     int i = 0;
-    int wait_ret;
+    //int wait_ret;
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: ===== STARTING BROADCAST MESSAGE =====\n", __func__, __LINE__);
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Interface: %s\n", __func__, __LINE__, ifname);
 
@@ -581,8 +580,9 @@ void send_multiap_broadcast_message(char *ifname)
 
     state = multiap_state_search_rsp_pending;
     sz = create_autoconfig_search(buff, ifname);
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Starting retry loop (max %d attempts)\n",__func__, __LINE__, MAX_AUTOCONFIG_RETRIES);
-    while (state == multiap_state_search_rsp_pending && i <= MAX_AUTOCONFIG_RETRIES) {
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Autoconfig search message created, size=%u\n",
+        __func__, __LINE__, sz);
+    //while (state == multiap_state_search_rsp_pending ) { //&& i <= MAX_AUTOCONFIG_RETRIES) {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Attempt %d: Sending frame\n", __func__, __LINE__, i+1);
         if (send_frame(buff, sz, true, ifname) < 0) {
             wifi_util_info_print(WIFI_APPS, "%s:%d: failed, err:%d\n", __func__, __LINE__);
@@ -593,22 +593,26 @@ void send_multiap_broadcast_message(char *ifname)
         wifi_util_info_print(WIFI_APPS, "%s:%d: state in while loop = %d and iteration =%d\n",
             __func__, __LINE__, state, i);
         // Wait 1 second between retries
+        #if 0
         wait_ret = WaitForTimeout(AUTO_CFG_RETRY_MS);
         if (wait_ret == 0) {
             // Shutdown signal received
-            break;
+            wifi_util_error_print(WIFI_APPS, "%s:%d: WaitForTimeout failed with error: %d\n",
+                __func__, __LINE__, wait_ret);
+            //break;
         } else if (wait_ret != ETIMEDOUT) {
             wifi_util_error_print(WIFI_APPS, "%s:%d: WaitForTimeout failed with error: %d\n",
                 __func__, __LINE__, wait_ret);
-            break;
+            //break;
         }
+        #endif
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: ===== BROADCAST MESSAGE COMPLETED =====\n", __func__, __LINE__);
-    }
+    //}
     // state = multiap_state_none;
     wifi_util_info_print(WIFI_APPS, "IEEE1905: autoconfig_search send successful and state =%d \n",
         state);
-    // After sending for Autofconfig search for 50 times if no reply is seen then the other device
-    // is in extender mode
+    /* After sending for Autofconfig search for 50 times if no reply is
+        seen then the other device s in extender mode*/
     //apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
 }
 
@@ -866,6 +870,9 @@ void proto_process(unsigned char *data, unsigned int len)
 }
 static void *receive_multicast_message(void *ctx)
 {
+
+    /* Set thread name for /proc visibility */
+    prctl(PR_SET_NAME, "ieee1905_rx", 0, 0, 0);
 
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);

@@ -84,8 +84,6 @@ void *app_detached_event_func(void *data)
 int push_event_to_app_queue(wifi_app_t *app, wifi_event_t *event)
 {
     wifi_event_t *clone;
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: push_event event= %p, event_type=%d, sub_type=%d, app_des %s\n",
-            __func__, __LINE__, event, event->event_type, event->sub_type, app->desc.desc);
     clone_wifi_event(event, &clone);
     if(clone == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s %d failed to clone event\n",__FUNCTION__, __LINE__);
@@ -104,16 +102,13 @@ int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event)
 {
     wifi_app_t	*app = NULL;
     unsigned int i = 0;
-    wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905 event= %p, event_type=%d, sub_type=%d, route = %d\n",
-                     __func__, __LINE__, event, event->event_type, event->sub_type, event->route.dst);
+
     // check if the event is unicast to any app
     if (unicast_event_to_apps(event)) {
         i = wifi_app_inst_max;
         while (i) {
             app = get_app_by_inst(apps_mgr, (event->route.u.inst_bit_map & i));
             if ((app != NULL) && (app->desc.rfc == true)) {
-                wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905: type %d, app desc %s\n",
-                            __func__, __LINE__, event->event_type, app->desc.desc);
                 (app->desc.create_flag & APP_DETACHED) ? push_event_to_app_queue(app, event):app->desc.event_fn(app, event);
             }
             i = i>>1;
@@ -127,8 +122,6 @@ int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event)
         if ((app->desc.rfc == true)) {
             if (app->desc.reg_events_types & event->event_type) {
                 if ( app->desc.inst != wifi_app_inst_analytics ) {
-                    wifi_util_info_print(WIFI_APPS, "%s:%d:IEEE1905:in while event= %p, type %d, app desc %s,sub_type=%d, route = %d\n",
-                            __func__, __LINE__, event, event->event_type, app->desc.desc, event->sub_type, event->route.dst);
                     (app->desc.create_flag & APP_DETACHED) ? push_event_to_app_queue(app, event):app->desc.event_fn(app, event);
                 }
             }
