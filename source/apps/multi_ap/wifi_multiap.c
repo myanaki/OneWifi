@@ -246,7 +246,7 @@ int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     // Hardcoded interface names for debugging
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     static int delay_count = 0;
-    const char *test_interfaces[] = {"brlan0", "wl0.1", "wl1.1"};
+    const char *test_interfaces[] = {"wl0.1"};
     unsigned int num_interfaces = sizeof(test_interfaces) / sizeof(test_interfaces[0]);
 
     delay_count++;
@@ -255,8 +255,7 @@ int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
             "%s:%d IEEE1905: delaying autoconfig search sending \n", __func__, __LINE__);
             return RETURN_OK;
     }
-    return RETURN_OK;
-    #if 0
+        
     // Send autoconfiguration search on each interface
     for (unsigned int i = 0; i < num_interfaces; i++) {
         send_multiap_broadcast_message((char *)test_interfaces[i]);
@@ -264,7 +263,7 @@ int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
     //send_multiap_broadcast_message(interface_name);
     return RETURN_OK;
-    #endif
+    
 }
 
 int handle_autoconf_search(unsigned char *data, unsigned int len)
@@ -567,7 +566,7 @@ void send_multiap_broadcast_message(char *ifname)
     unsigned char buff[MAX_BUFF_SZ];
     unsigned int sz;
     int i = 0;
-    int wait_ret;
+    //int wait_ret;
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: ===== STARTING BROADCAST MESSAGE =====\n", __func__, __LINE__);
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Interface: %s\n", __func__, __LINE__, ifname);
 
