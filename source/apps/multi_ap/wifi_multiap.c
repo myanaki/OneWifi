@@ -48,6 +48,7 @@
 static int sockets[MAX_IFACES] = { -1 };
 static int socket_count = 0;
 pthread_t thread_id;
+unsigned int create_thread = 1;
 
 volatile multiap_state_t state = multiap_state_none;
 
@@ -203,7 +204,10 @@ int multiap_event_exec_start(wifi_app_t *apps, void *arg)
     }
 
     ctrl->multiap_sta_enabled = true;
+    if(create_thread == 1){
     receive_multiap_message();
+    create_thread = 0;
+    }
     // start the station vaps only if none of the station is connected to vaps because in XLE when
     // its in GW mode(with WAN failover)
     //  stations are connected to the GW then we should not start the station vaps
@@ -232,8 +236,8 @@ int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: State reset to none\n", __func__, __LINE__);
 
     pthread_cancel(thread_id);     // Force stop receive thread
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Receive thread stopped\n", __func__, __LINE__);    ctrl->multiap_sta_enabled = false;
-
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Receive thread stopped\n", __func__, __LINE__);
+    create_thread = 1;
     ctrl->multiap_sta_enabled = false;
     start_station_vaps(true, false);
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Multiap application stopped\n", __func__, __LINE__);
@@ -248,6 +252,7 @@ int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     static int delay_count = 0;
     const char *test_interfaces[] = {"wl0.1"};
     unsigned int num_interfaces = sizeof(test_interfaces) / sizeof(test_interfaces[0]);
+    static int cancel_thread =0;
 
     delay_count++;
     if (delay_count < 3) {
@@ -260,10 +265,14 @@ int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     for (unsigned int i = 0; i < num_interfaces; i++) {
         send_multiap_broadcast_message((char *)test_interfaces[i]);
     }
+    if(cancel_thread){
     apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+    cancel_thread =0;
+    }else{
+    cancel_thread =1;
+    }
     //send_multiap_broadcast_message(interface_name);
-    return RETURN_OK;
-    
+    return RETURN_OK; 
 }
 
 int handle_autoconf_search(unsigned char *data, unsigned int len)
