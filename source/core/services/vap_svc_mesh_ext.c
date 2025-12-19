@@ -37,7 +37,7 @@
 #include "wifi_stubs.h"
 #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
 #include "wifi_multiap.h"
-extern volatile multiap_state_t state;
+//extern volatile multiap_state_t state;
 #endif
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
@@ -1906,6 +1906,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
             return RETURN_ERR;
         }
+    #if 0
     #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
         if (sta_data->stats.connect_status == wifi_connection_status_connected) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d interface_name=%s before sending 1905 frame\n", __func__, __LINE__,sta_data->interface_name);
@@ -1915,7 +1916,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             wifi_util_error_print(WIFI_CTRL, "%s:%d IEEE1905: interface_name=%s after sending 1905 frame\n", __func__, __LINE__,sta_data->interface_name);
         }
     #endif
-    
+    #endif
     }
 
     if (candidate != NULL) {

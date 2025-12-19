@@ -2246,19 +2246,6 @@ static int run_analytics_event(void* arg)
     return TIMER_TASK_COMPLETE;
 }
 
-#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
-static int run_multiap_event(void* arg)
-{
-    wifi_ctrl_t *ctrl = NULL;
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Triggering multiap exec timeout event\n", __func__, __LINE__);
-    apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
-
-    return TIMER_TASK_COMPLETE;
-}
-#endif
-
 #ifdef ONEWIFI_CAC_APP_SUPPORT
 static int run_cac_event(void* arg)
 {
@@ -2290,8 +2277,8 @@ static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 
 #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
     // Add multiap timer task - runs every 60 seconds for testing
-    scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, run_multiap_event, NULL, 60000, 0, FALSE);
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
+    //scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, run_multiap_event, NULL, 60000, 0, FALSE);
+    //wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
 #endif
 
 #ifdef ONEWIFI_CAC_APP_SUPPORT

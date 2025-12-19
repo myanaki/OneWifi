@@ -53,6 +53,7 @@ typedef enum {
     multiap_state_none,
     multiap_state_search_rsp_pending,
     multiap_state_completed,
+    multiap_state_sta_create_and_connect,
 } multiap_state_t;
 typedef char multiap_short_string_t[64];
 typedef unsigned char multiap_enum_type_t;
@@ -135,14 +136,6 @@ typedef struct {
     unsigned char num_service;
     unsigned char supported_service[0];
 } __attribute__((__packed__)) multiap_supported_srv_t;
-
-int create_autoconfig_search(unsigned char *buff, char *ifname);
-int send_frame(unsigned char *buff, unsigned int len, bool multicast, char *ifname);
-void send_multiap_broadcast_message(char *ifname);
-void receive_multiap_message();
-int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *interface_name);
-int parse_multiap_tlv(unsigned char *buff, unsigned int len, multiap_tlv_type_t type,
-    void *out_buff, size_t out_len);
 
 #ifdef __cplusplus
 }
