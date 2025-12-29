@@ -867,14 +867,15 @@ static int multiap_timeout_fun(void* arg)
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Triggering multiap exec timeout event for sending\n",
             __func__, __LINE__);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
-#define MULTIAP_RESP_TIMEOUT (2000)
+#define MULTIAP_RESP_TIMEOUT (60000)
          scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, MULTIAP_RESP_TIMEOUT);
     } else if (state == multiap_state_sta_create_and_connect) {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Failed to connect/find GW device within timeout\n",
             __func__, __LINE__);
+        state = multiap_state_search_rsp_pending;
         // Stop the scheduler
-        scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
-        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+        //scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
+        //apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
     } else {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905:(UNHANDLED CASE)  Timeout on state : %d\n",
             __func__, __LINE__, state);
