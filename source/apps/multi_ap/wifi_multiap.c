@@ -695,22 +695,30 @@ static void proto_process(unsigned char *data, unsigned int len)
 
     switch (htons(cmdu->type)) {
     case multiap_msg_type_autoconf_search:
-        if (state == multiap_state_none) {
-            wifi_util_info_print(WIFI_APPS, "%s:%d :Got a  packet of type =%d\n processing it",
-                __func__, __LINE__, htons(cmdu->type));
-            ret = handle_autoconf_search(data, len);
-            if (ret == -1) {
-                wifi_util_info_print(WIFI_APPS,
-                    "autoconfig search response not sent hence setting the sate to none\n");
-                state = multiap_state_none;
-            } else {
-                wifi_util_info_print(WIFI_APPS,
-                    "autoconfig search response sent moving to extender mode\n");
+        if (is_device_type_xle()) {
+        wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XLE Extender - processing autoconfig search from gateway\n",
+            __func__, __LINE__);
+            if (state == multiap_state_none) {
+                wifi_util_info_print(WIFI_APPS, "%s:%d :Got a  packet of type =%d\n processing it",
+                    __func__, __LINE__, htons(cmdu->type));
+                ret = handle_autoconf_search(data, len);
+                if (ret == -1) {
+                    wifi_util_info_print(WIFI_APPS,
+                        "autoconfig search response not sent hence setting the sate to none\n");
+                    state = multiap_state_none;
+                } else {
+                    wifi_util_info_print(WIFI_APPS,
+                        "autoconfig search response sent moving to extender mode\n");
+                }
             }
+        } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+            wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XB Gateway - ignoring autoconfig search (gateway mode)\n",
+                __func__, __LINE__);
+            return;
         }
         break;
     case multiap_msg_type_autoconf_resp:
-        if (state == multiap_state_search_rsp_pending) {
+        if (state == multiap_state_search_rsp_pending && ctrl->network_mode == rdk_dev_mode_type_gw) {
             wifi_util_info_print(WIFI_APPS, "%s:%d :Got a valid packet of type =%d\n processing it",
                 __func__, __LINE__, htons(cmdu->type));
             state = multiap_state_completed;
@@ -731,7 +739,7 @@ static void proto_process(unsigned char *data, unsigned int len)
 
 static void *receive_multicast_message(void *ctx)
 {
-
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
@@ -764,7 +772,7 @@ static void *receive_multicast_message(void *ctx)
         wifi_util_info_print(WIFI_APPS, "%s:%d sockets[i]= %d\n", __func__, __LINE__, sockets[i]);
     }
 
-    while (1) {
+    while (ctrl->multiap_sta_enabled == true) {
         wifi_util_info_print(WIFI_APPS, "%s:%d Waiting for data on %d sockets\n", __func__, __LINE__, socket_count);
         int ret = poll(poll_fds, socket_count, -1); // -1 = infinite timeout
         if (ret < 0) {
