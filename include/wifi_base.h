@@ -41,6 +41,7 @@ extern "C" {
 #define WIFI_ENDPOINT_CONNECT_STATUS        "Device.WiFi.EndPoint.1.Status"
 #define WIFI_ACTIVE_GATEWAY_CHECK           "Device.X_RDK_GatewayManagement.ExternalGatewayPresent"
 #define WIFI_ENDPOINT_ENABLE_CHECK          "Device.WiFi.EndPoint.1.Enable"
+#define WIFI_MULTIAP_ENABLE                 "Device.WiFi.MultiapEnable"
 #define WIFI_WAN_FAILOVER_TEST              "Device.WiFi.WanFailoverTest"
 #define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
 #define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"

@@ -1,4 +1,4 @@
-/************************************************************************************
+ /************************************************************************************
   If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
 
@@ -151,6 +151,55 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     return rc;
 
 }
+
+bus_error_t get_multiap_enable(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    bus_error_t rc = bus_error_success;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_info_print(WIFI_CTRL, "%s:%d In get_multiap_enable().\n", __func__, __LINE__);
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+    p_data->data_type = bus_data_type_boolean;
+    p_data->raw_data.b = ctrl->multiap_sta_enabled;
+    return rc;
+}
+
+bus_error_t set_multiap_enable(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    bus_error_t rc = bus_error_success;
+    bool multiap_enable = false;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d In set_multiap_enable().\n", __func__, __LINE__);
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+
+    if (p_data->data_type != bus_data_type_boolean) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid data input\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+
+    multiap_enable = p_data->raw_data.b;
+    ctrl->multiap_sta_enabled = multiap_enable;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_enable : %d.\n", __func__, __LINE__,multiap_enable);
+
+    if (multiap_enable) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d wifi_event_exec_start.\n", __func__, __LINE__);
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d wifi_event_exec_stop.\n", __func__, __LINE__);
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+    }
+
+    return rc;
+
+}
+
 
 int stats_bus_publish(wifi_ctrl_t *ctrl, void *stats_data)
 {
@@ -3437,6 +3486,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_CSA_BEACON_FRAME_RECEIVED, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, eventSubHandler, NULL}, high_speed, ZERO_TABLE,
                                     { bus_data_type_bytes, false, 0, 0, 0, NULL } },
+                                { WIFI_MULTIAP_ENABLE, bus_element_type_method,
+                                    { get_multiap_enable, set_multiap_enable, NULL, NULL, NULL,NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_boolean, true, 0, 0, 0, NULL } },
     };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);

@@ -757,6 +757,8 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
         wifi_util_error_print(WIFI_CTRL, "%s %d  msg is null\n", __FUNCTION__, __LINE__);
         return RETURN_ERR;
     }
+    wifi_util_info_print(WIFI_CTRL, "%s %d:IEEE1905: calling create_wifi_event(),subtype: %s and type: %s.\n",
+        __FUNCTION__, __LINE__, wifi_event_subtype_to_string(sub_type),wifi_event_type_to_string(type));
 
     event = create_wifi_event(len, type, sub_type);
     if (event == NULL) {

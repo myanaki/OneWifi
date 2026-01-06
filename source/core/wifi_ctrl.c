@@ -242,8 +242,8 @@ void selfheal_event_publish(wifi_ctrl_t *ctrl)
 
 void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
 {
-    if (ctrl->rf_status_down == true) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Sta selfheal mode deactivated due to Ignite mode\n",
+    if (ctrl->rf_status_down == true  || ctrl->multiap_sta_enabled == true ) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Sta selfheal mode disabled due \n",
             __func__, __LINE__);
         return;
     }
@@ -287,7 +287,7 @@ bool is_sta_enabled(void)
        __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check,  ctrl->rf_status_down);
    return ((ctrl->network_mode == rdk_dev_mode_type_ext ||
               ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->active_gw_check == true || 
-              ctrl->rf_status_down == true ) &&  ctrl->eth_bh_status == false);
+              ctrl->rf_status_down == true || ctrl->multiap_sta_enabled == true ) &&  ctrl->eth_bh_status == false);
 }
 
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
@@ -297,7 +297,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     time_t  time_diff;
     int rc = 0;
     wifi_event_t *event = NULL;
-wifi_util_info_print(WIFI_APPS,"IEEE1905: Inside main ctrl_queue_loop fun. \n");
+
     pthread_mutex_lock(&ctrl->queue_lock);
     while (ctrl->exit_ctrl == false) {
 
@@ -324,13 +324,15 @@ wifi_util_info_print(WIFI_APPS,"IEEE1905: Inside main ctrl_queue_loop fun. \n");
                     continue;
                 }
                 pthread_mutex_unlock(&ctrl->queue_lock);
-                //wifi_util_info_print(WIFI_APPS,"IEEE1905: event->event_type  =%d \n",event->event_type);
+                wifi_util_info_print(WIFI_CTRL,"[%s]: IEEE1905 event_type = %d\n",__FUNCTION__, event->event_type);
                 switch (event->event_type) {
                     case wifi_event_type_webconfig:
+                        wifi_util_info_print(WIFI_CTRL,"[%s]: IEEE1905 wifi_event_type_webconfig.\n",__FUNCTION__);
                         handle_webconfig_event(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
                         break;
 
                     case wifi_event_type_hal_ind:
+                        wifi_util_info_print(WIFI_CTRL,"[%s]: IEEE1905 wifi_event_type_hal_ind.\n",__FUNCTION__);
                         handle_hal_indication(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
                         break;
 
@@ -1791,8 +1793,10 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 #ifdef ONEWIFI_CAC_APP_SUPPORT
     apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 #endif
+#if 0
 #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
-    apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+    //apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+#endif
 #endif
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
@@ -2788,6 +2792,7 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
     unsigned int index, i;
 
     index = get_sta_vap_index_for_radio(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, radio_index);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d: vap index : %d for radio_index: %d\n",__func__, __LINE__, index,radio_index);
 
     radio = find_radio_config_by_index(radio_index);
     if (radio == NULL) {
@@ -2799,6 +2804,10 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
         if (map->vap_array[i].vap_index == index) {
             found = true;
             strcpy(ssid, map->vap_array[i].u.sta_info.ssid);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d: ======vap_index: %d Found =========\n",
+                __func__, __LINE__,map->vap_array[i].vap_index);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d: SSID : %s\n",
+                __func__, __LINE__,map->vap_array[i].u.sta_info.ssid);
             break;
         }
     }

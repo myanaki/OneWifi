@@ -863,11 +863,15 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                     print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "Old", tgt_vap_index, &mgr_vap_info->u.sta_info.security);
                     print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "New", tgt_vap_index, &vap_info->u.sta_info.security);
                 }
+                 print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "IEEE1905:Old", tgt_vap_index, &mgr_vap_info->u.sta_info.security);
+                 print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "IEEE1905:New", tgt_vap_index, &vap_info->u.sta_info.security);
             } else {
                 if (memcmp(&mgr_vap_info->u.bss_info.security, &vap_info->u.bss_info.security, sizeof(wifi_vap_security_t))) {
                     print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "Old", tgt_vap_index, &mgr_vap_info->u.bss_info.security);
                     print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "New", tgt_vap_index, &vap_info->u.bss_info.security);
                 }
+                    print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "IEEE1905:Old", tgt_vap_index, &mgr_vap_info->u.bss_info.security);
+                    print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "IEEE1905:New", tgt_vap_index, &vap_info->u.bss_info.security);
 #ifdef FEATURE_SUPPORT_WPS
                 if (memcmp(&mgr_vap_info->u.bss_info.wps, &vap_info->u.bss_info.wps, sizeof(wifi_wps_t))) {
                     print_wifi_hal_vap_wps_data(WIFI_WEBCONFIG, "Old", tgt_vap_index, &mgr_vap_info->u.bss_info.wps);
@@ -2821,6 +2825,7 @@ void create_station_with_xfinity_credentials(webconfig_subdoc_data_t *data ,int 
             snprintf(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].
             u.sta_info.ssid,sizeof(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
             .u.sta_info.ssid), "Xfinity Mobile");
+
             if (band == WIFI_FREQUENCY_6_BAND) {
                 data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.security.mode = wifi_security_mode_wpa3_enterprise;
@@ -2895,12 +2900,12 @@ void create_station_with_xfinity_credentials(webconfig_subdoc_data_t *data ,int 
     }
 }
 
-static void create_station_with_private_credentials(webconfig_subdoc_data_t *data,int num_vaps,int private_num_vaps,wifi_vap_name_t *private_vap_names )
+static void create_station_with_private_credentials(webconfig_subdoc_data_t *data,int num_vaps,int private_num_vaps,wifi_vap_name_t *private_vap_names,wifi_vap_name_t *vap_names)
 {
-    int private_vap_index = 0, radio_index = 0, vap_index = 0;
+    int private_vap_index = 0, radio_index = 0, vap_index = 0, band = 0;
     int status = RETURN_OK;
     int vap_array_index = 0,private_vap_array_index = 0;
-    wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = { 0 };
+    //wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = { 0 };
     
     for (int i = 0; i < num_vaps || i < private_num_vaps; i++) {
         vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop,vap_names[i]);
@@ -2908,7 +2913,6 @@ static void create_station_with_private_credentials(webconfig_subdoc_data_t *dat
             continue;
         }
 
-       
         private_vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop,private_vap_names[i]);
         if (private_vap_index == RETURN_ERR) {
             continue;
@@ -2922,14 +2926,31 @@ static void create_station_with_private_credentials(webconfig_subdoc_data_t *dat
             break;
         }
         else {
-           
-            wifi_util_error_print(WIFI_CTRL, "%s:%d  pvt=%s passphrase = %s\n", __func__, __LINE__,data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.ssid,data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.security.u.key.key);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d IEEE1905: pvt=%s passphrase = %s\n", __func__, __LINE__,data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.ssid,data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.security.u.key.key);
             snprintf(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ssid,sizeof(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ssid),data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.ssid);
             snprintf(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.key.key,sizeof(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.key.key),data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.security.u.key.key);
             
+            convert_radio_index_to_freq_band(&data->u.decoded.hal_cap.wifi_prop, radio_index,&band);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: radio index = %d & Band = %d\n",__func__, __LINE__,radio_index ,band);
+
+            if (band == WIFI_FREQUENCY_6_BAND) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: 6G Band WPA3.\n",__func__, __LINE__);
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
+            } else {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: 2.4G/5G Band WPA2.\n",__func__, __LINE__);
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+            }
+
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+            .u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_NONE;
+
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+            .u.sta_info.enabled = true;
+
         }
-   }
-    
+    }
 }
 void start_station_vaps(bool is_private,bool rf_status)
 {
@@ -2960,10 +2981,10 @@ void start_station_vaps(bool is_private,bool rf_status)
 	    create_station_with_xfinity_credentials(data,num_vaps,vap_names);
     }
     else if (rf_status) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d IEEE1905: creating station with private credentials\n",__FUNCTION__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d IEEE1905 creating station with private credentials\n",__func__, __LINE__);
         private_num_vaps = get_list_of_private_ssid(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS, &private_vap_names[0]);
-	wifi_util_info_print(WIFI_CTRL,"IEEE1905: private_num_vaps = %d .\n",private_num_vaps);
-        create_station_with_private_credentials(data,num_vaps,private_num_vaps,private_vap_names);
+	    wifi_util_info_print(WIFI_CTRL,"IEEE1905: private_num_vaps = %d .\n",private_num_vaps);
+        create_station_with_private_credentials(data,num_vaps,private_num_vaps,private_vap_names,vap_names);
     }
     else {
         wifi_util_dbg_print(WIFI_CTRL,"IEEE1905: station vaps going back to default case \n");
