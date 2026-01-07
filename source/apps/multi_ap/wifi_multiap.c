@@ -842,7 +842,7 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     // Hardcoded interface names for debugging
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     static int delay_count = 0;
-    const char *interfaces[] = {"brlan0","wl0.1","wl1.1"};
+    const char *interfaces[] = {"wl1","wl0","brlan0"};
     unsigned int num_interfaces = sizeof(interfaces) / sizeof(interfaces[0]);
 
     if (ctrl->multiap_sta_enabled == false) {
