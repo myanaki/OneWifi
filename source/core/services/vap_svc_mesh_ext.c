@@ -541,7 +541,7 @@ int process_udhcp_ip_check(vap_svc_t *svc)
         }
     }
 
-    if ((ip_check_count >= EXT_UDHCP_IP_CHECK_NUM) && !(ctrl->multiap_sta_enabled)){
+    if (ip_check_count >= EXT_UDHCP_IP_CHECK_NUM){
         scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
         ext->ext_udhcp_ip_check_id = 0;
         ip_check_count = 0;
@@ -1773,7 +1773,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 ext->ext_trigger_disconnection_timeout_handler_id = 0;
             }
 
-            if (ctrl->network_mode != rdk_dev_mode_type_em_node) {
+            if ((ctrl->network_mode != rdk_dev_mode_type_em_node) && !(ctrl->multiap_sta_enabled))  {
                 scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_ip_check_id,
                     process_udhcp_ip_check, svc, EXT_UDHCP_IP_CHECK_INTERVAL,
                     EXT_UDHCP_IP_CHECK_NUM + 1, FALSE);
