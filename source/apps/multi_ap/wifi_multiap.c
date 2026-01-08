@@ -180,13 +180,15 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
     }
     wifi_util_error_print(WIFI_APPS, "%s:%d IEEE1905: supported_service = %d: hex value = 0x%x\n",
         __func__, __LINE__, srv->supported_service[0], srv->supported_service[0]);
+/*
     if (device_supporting_service == multiap_service_type_extender ||
         srv->supported_service[0] == multiap_service_type_extender) {
         wifi_util_error_print(WIFI_APPS,
             "%s:%d either supporting service or supported service is extender so not replying\n",
             __func__, __LINE__);
         return -1;
-    }
+    }*/
+    
     wifi_util_info_print(WIFI_APPS, "split brain is detected in the network\n");
 
     state = multiap_state_completed;
@@ -449,7 +451,7 @@ static void send_multiap_broadcast_message(char *ifname)
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: ===== STARTING BROADCAST MESSAGE =====\n", __func__, __LINE__);
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Interface: %s\n", __func__, __LINE__, ifname);
 
-    //wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_APPS, "%s:%d: ifname = %s\n", __func__, __LINE__, ifname);
     if (multiap_service_type_extender == get_service_type() ) {
         wifi_util_info_print(WIFI_APPS,
@@ -473,6 +475,8 @@ static void send_multiap_broadcast_message(char *ifname)
     wifi_util_info_print(WIFI_APPS, "IEEE1905: autoconfig_search send successful and state =%d \n", state);
     /* After sending for Autofconfig search for 50 times if no reply is
         seen then the other device s in extender mode*/
+    apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+        
 }
 
 static int set_bp_filter(int sockfd, const char *iface_name)
@@ -695,12 +699,13 @@ static void proto_process(unsigned char *data, unsigned int len)
 
     switch (htons(cmdu->type)) {
     case multiap_msg_type_autoconf_search:
-        if (is_device_type_xle()) {
+        //if (is_device_type_xle()) {
+        if(1){
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XLE Extender - processing autoconfig search from gateway\n",
             __func__, __LINE__);
-            if (state == multiap_state_none) {
-                wifi_util_info_print(WIFI_APPS, "%s:%d :Got a  packet of type =%d\n processing it",
-                    __func__, __LINE__, htons(cmdu->type));
+            //if (state == multiap_state_none) 
+              //  wifi_util_info_print(WIFI_APPS, "%s:%d :Got a  packet of type =%d\n processing it",
+                //    __func__, __LINE__, htons(cmdu->type));
                 ret = handle_autoconf_search(data, len);
                 if (ret == -1) {
                     wifi_util_info_print(WIFI_APPS,
@@ -710,12 +715,14 @@ static void proto_process(unsigned char *data, unsigned int len)
                     wifi_util_info_print(WIFI_APPS,
                         "autoconfig search response sent moving to extender mode\n");
                 }
-            }
-        } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+            
+
+        } 
+        /*else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
             wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XB Gateway - ignoring autoconfig search (gateway mode)\n",
                 __func__, __LINE__);
             return;
-        }
+        }*/
         break;
     case multiap_msg_type_autoconf_resp:
         if (state == multiap_state_search_rsp_pending && ctrl->network_mode == rdk_dev_mode_type_gw) {
@@ -841,7 +848,7 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
     // Hardcoded interface names for debugging
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    static int delay_count = 0;
+    //static int delay_count = 0;
     const char *interfaces[] = {"wl1","wl0","brlan0"};
     unsigned int num_interfaces = sizeof(interfaces) / sizeof(interfaces[0]);
 
@@ -850,14 +857,16 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
             __func__, __LINE__);
         return RETURN_OK;
     }
-
+#if 0
     delay_count++;
     if (delay_count < 3) {
         wifi_util_info_print(WIFI_APPS,
             "%s:%d IEEE1905: delaying autoconfig search sending \n", __func__, __LINE__);
             return RETURN_OK;
     }
-
+#endif
+    wifi_util_info_print(WIFI_APPS, "%s:%d Calling: Send multiap broadcast msg \n",
+            __func__, __LINE__);
     // Send autoconfiguration search on each interface
     for (unsigned int i = 0; i < num_interfaces; i++) {
         send_multiap_broadcast_message((char *)interfaces[i]);
