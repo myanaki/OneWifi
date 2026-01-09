@@ -428,7 +428,7 @@ static int send_frame(unsigned char *buff, unsigned int len, bool multicast, cha
     struct sockaddr_ll sadr_ll;
     mac_address_t multi_addr = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
-    wifi_util_info_print(WIFI_APPS, "Sending frame on %s\n", ifname);
+    wifi_util_info_print(WIFI_CTRL "Sending frame on %s\n", ifname);
 
     sadr_ll.sll_ifindex = (int)(if_nametoindex(ifname));
     sadr_ll.sll_halen = ETH_ALEN; // length of destination mac address
@@ -842,7 +842,7 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     // Hardcoded interface names for debugging
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     static int delay_count = 0;
-    const char *interfaces[] = {"brlan0","wl0.1","wl1.1"};
+    const char *interfaces[] = {"wl1","wl0","brlan0"};
     unsigned int num_interfaces = sizeof(interfaces) / sizeof(interfaces[0]);
 
     if (ctrl->multiap_sta_enabled == false) {

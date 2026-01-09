@@ -626,6 +626,11 @@ void ext_start_scan(vap_svc_t *svc)
         }
 
         radio_oper_param = get_wifidb_radio_map(radio_index);
+        //skip radio 6GHz
+        if (radio_oper_param->band == WIFI_FREQUENCY_6_BAND) {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d IEEE1905: Skipping scan on 6GHz radio index: %d\n",__func__, __LINE__, radio_index);
+            continue;
+        }
         if (get_allowed_channels(radio_oper_param->band, &mgr->hal_cap.wifi_prop.radiocap[radio_index],
                 channels_list, &num_channels,
                 radio_oper_param->DfsEnabled) != RETURN_OK) {
