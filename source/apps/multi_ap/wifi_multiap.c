@@ -219,7 +219,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
         "switching the device to extender mode split brain recovered\n");
     return 0;
 }
-
+#if 0
 static int handle_autoconf_search_resp(unsigned char *data, unsigned int len)
 {
     int tlv_len, total_macs;
@@ -308,6 +308,8 @@ static int handle_autoconf_search_resp(unsigned char *data, unsigned int len)
     }
     return 0;
 }
+#endif
+
 static int create_autoconfig_search(unsigned char *buff, char *interface_name)
 {
     unsigned short msg_id = multiap_msg_type_autoconf_search;
@@ -679,7 +681,7 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
 
 static void proto_process(unsigned char *data, unsigned int len)
 {
-    wifi_ctrl_t *ctrl;
+    //wifi_ctrl_t *ctrl;
     multiap_cmdu_t *cmdu;
     int ret = -1;
     multiap_raw_hdr_t *hdr = (multiap_raw_hdr_t *)(data);
@@ -691,52 +693,56 @@ static void proto_process(unsigned char *data, unsigned int len)
         // This is a message that was sent to the same address it was sent fro
         return;
     }
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    //ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_APPS, "%s:%d :Got a valid packet of type =%d\n", __func__, __LINE__,
         htons(cmdu->type));
 
     switch (htons(cmdu->type)) {
-    case multiap_msg_type_autoconf_search:
-        if (is_device_type_xle()) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XLE Extender - processing autoconfig search from gateway\n",
-            __func__, __LINE__);
-            if (state == multiap_state_none) {
-                wifi_util_info_print(WIFI_APPS, "%s:%d :Got a  packet of type =%d\n processing it",
-                    __func__, __LINE__, htons(cmdu->type));
-                ret = handle_autoconf_search(data, len);
-                if (ret == -1) {
-                    wifi_util_info_print(WIFI_APPS,
-                        "autoconfig search response not sent hence setting the sate to none\n");
-                    state = multiap_state_none;
-                } else {
-                    wifi_util_info_print(WIFI_APPS,
-                        "autoconfig search response sent moving to extender mode\n");
-                }
-            }
-        } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
-            wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XB Gateway - ignoring autoconfig search (gateway mode)\n",
+        case multiap_msg_type_autoconf_search:
+            //if (is_device_type_xle()) {
+            wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XLE Extender - processing autoconfig search from gateway\n",
                 __func__, __LINE__);
-            return;
-        }
-        break;
-    case multiap_msg_type_autoconf_resp:
-        if (state == multiap_state_search_rsp_pending && ctrl->network_mode == rdk_dev_mode_type_gw) {
-            wifi_util_info_print(WIFI_APPS, "%s:%d :Got a valid packet of type =%d\n processing it",
-                __func__, __LINE__, htons(cmdu->type));
-            state = multiap_state_completed;
-            handle_autoconf_search_resp(data, len);
-            wifi_util_info_print(WIFI_APPS, "%s:%d :Bringing down the station", __func__, __LINE__);
-            if (is_sta_enabled() == false) {
-                wifi_util_info_print(WIFI_APPS, "%s:%d stop mesh sta\n", __func__, __LINE__);
-                stop_extender_vaps();
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
-            }
-        }
-        break;
-    default:
-        wifi_util_info_print(WIFI_APPS, "Got different  package\n");
-        break;
-    }
+                if (state == multiap_state_none) {
+                    wifi_util_info_print(WIFI_APPS, "%s:%d :Got a  packet of type =%d\n processing it",
+                        __func__, __LINE__, htons(cmdu->type));
+                    ret = handle_autoconf_search(data, len);
+                    if (ret == -1) {
+                        wifi_util_info_print(WIFI_APPS,
+                            "autoconfig search response not sent hence setting the sate to none\n");
+                        state = multiap_state_none;
+                    } else {
+                        wifi_util_info_print(WIFI_APPS,
+                            "autoconfig search response sent moving to extender mode\n");
+                    }
+                }
+            //} else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+            //    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XB Gateway - ignoring autoconfig search (gateway mode)\n",
+            //        __func__, __LINE__);
+            //    return;
+            //}
+            break;
+        case multiap_msg_type_autoconf_resp:
+        #if 0
+                if (state == multiap_state_search_rsp_pending && ctrl->network_mode == rdk_dev_mode_type_gw) {
+                    wifi_util_info_print(WIFI_APPS, "%s:%d :Got a valid packet of type =%d\n processing it",
+                        __func__, __LINE__, htons(cmdu->type));
+                    state = multiap_state_completed;
+                    handle_autoconf_search_resp(data, len);
+                    wifi_util_info_print(WIFI_APPS, "%s:%d :Bringing down the station", __func__, __LINE__);
+                    if (is_sta_enabled() == false) {
+                        wifi_util_info_print(WIFI_APPS, "%s:%d stop mesh sta\n", __func__, __LINE__);
+                        stop_extender_vaps();
+                        ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
+                    }
+                }
+        #endif
+            wifi_util_info_print(WIFI_CTRL, "Device 2 hence not to process Autoconfig response msg(M2).\n");
+            break;
+
+        default:
+            wifi_util_info_print(WIFI_APPS, "Device 2 Got different  package\n");
+            break;
+    }  
 }
 
 static void *receive_multicast_message(void *ctx)
@@ -744,8 +750,10 @@ static void *receive_multicast_message(void *ctx)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    // Device two will rx on private vap interfaces
+    //const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7", "brlan1", "wl0.7" };
+    const char *ifaces[MAX_IFACES] = { "wl1.1", "wl0.1", "brlan0" };
 
-    const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7", "brlan1", "wl0.7" };
     char buffer[MAX_FRAME_SZ];
 
     struct pollfd poll_fds[MAX_IFACES];
@@ -833,7 +841,7 @@ static int receive_multiap_message()
         wifi_util_error_print(WIFI_APPS, "Failed to create thread\n");
         return -1;
     } else {
-        wifi_util_info_print(WIFI_APPS, "Recv thread created successfully\n");
+        wifi_util_info_print(WIFI_CTRL, "Recv thread created successfully\n");
     }
 
     return 0;
@@ -920,17 +928,19 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 
     if (receive_multiap_message() != 0) {
         close(send_sock);
-        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to create a receive thread for Multip messages\n",
             __func__, __LINE__);
         return RETURN_ERR;
     }
 
     /*start the station vaps only if none of the station is connected to vaps because in XLE when
     its in GW mode(with WAN failover) stations are connected to the GW then we should not start the station vaps*/
+    /*
     if (!is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
         start_station_vaps(true, true);
         ctrl->multiap_sta_enabled = true;
     }
+    */
     // Add multiap timer task
 #define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
     state = multiap_state_sta_create_and_connect;
