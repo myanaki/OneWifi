@@ -448,6 +448,7 @@ static void send_multiap_broadcast_message(char *ifname)
 {
     unsigned char buff[MAX_BUFF_SZ];
     unsigned int sz;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: ===== STARTING BROADCAST MESSAGE =====\n", __func__, __LINE__);
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Interface: %s\n", __func__, __LINE__, ifname);
 
@@ -475,6 +476,7 @@ static void send_multiap_broadcast_message(char *ifname)
     wifi_util_info_print(WIFI_APPS, "IEEE1905: autoconfig_search send successful and state =%d \n", state);
     /* After sending for Autofconfig search for 50 times if no reply is
         seen then the other device s in extender mode*/
+    apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
 }
 
 static int set_bp_filter(int sockfd, const char *iface_name)
@@ -688,6 +690,8 @@ static void proto_process(unsigned char *data, unsigned int len)
     if (memcmp(hdr->src, hdr->dst, sizeof(mac_address_t)) == 0) {
         wifi_util_info_print(WIFI_APPS, "%s:%d :Failed to initialize socket on\n", __func__,
             __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d :IEEE1905 mac address are same for src & dst.\n", __func__,
+            __LINE__); 
         // This is a message that was sent to the same address it was sent fro
         return;
     }
@@ -744,8 +748,8 @@ static void *receive_multicast_message(void *ctx)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
-    const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7", "brlan1", "wl0.7" };
+    // mesh_sta vap interfaces only create socket
+    const char *ifaces[MAX_IFACES] = { "wl1", "wl0", "brlan0" };
     char buffer[MAX_FRAME_SZ];
 
     struct pollfd poll_fds[MAX_IFACES];

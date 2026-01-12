@@ -2903,7 +2903,7 @@ void create_station_with_xfinity_credentials(webconfig_subdoc_data_t *data ,int 
 
 static void create_station_with_private_credentials(webconfig_subdoc_data_t *data,int num_vaps,int private_num_vaps,wifi_vap_name_t *private_vap_names,wifi_vap_name_t *vap_names)
 {
-    int private_vap_index = 0, radio_index = 0, vap_index = 0;
+    int private_vap_index = 0, radio_index = 0, vap_index = 0 , band = 0;
     int status = RETURN_OK;
     int vap_array_index = 0,private_vap_array_index = 0;
     
@@ -2929,6 +2929,25 @@ static void create_station_with_private_credentials(webconfig_subdoc_data_t *dat
             wifi_util_error_print(WIFI_CTRL, "%s:%d IEEE1905 pvt=%s passphrase = %s\n", __func__, __LINE__,data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.ssid,data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.security.u.key.key);
             snprintf(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ssid,sizeof(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ssid),data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.ssid);
             snprintf(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.key.key,sizeof(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.key.key),data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.security.u.key.key);
+
+            convert_radio_index_to_freq_band(&data->u.decoded.hal_cap.wifi_prop, radio_index,&band);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: radio index = %d & Band = %d\n",__func__, __LINE__,radio_index ,band);
+
+            if (band == WIFI_FREQUENCY_6_BAND) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: 6G Band WPA3.\n",__func__, __LINE__);
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
+            } else {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: 2.4G/5G Band WPA2.\n",__func__, __LINE__);
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+            }
+
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+            .u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_NONE;
+ 
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+            .u.sta_info.enabled = true;
         }
    }
     
