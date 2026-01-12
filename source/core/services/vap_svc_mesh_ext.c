@@ -1911,17 +1911,16 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
             return RETURN_ERR;
         }
-    #if 0
     #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
         if (sta_data->stats.connect_status == wifi_connection_status_connected) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d interface_name=%s before sending 1905 frame\n", __func__, __LINE__,sta_data->interface_name);
-            state =  multiap_state_none;
+            //state =  multiap_state_none;
 
             apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
             wifi_util_error_print(WIFI_CTRL, "%s:%d IEEE1905: interface_name=%s after sending 1905 frame\n", __func__, __LINE__,sta_data->interface_name);
         }
     #endif
-    #endif
+
     }
 
     if (candidate != NULL) {

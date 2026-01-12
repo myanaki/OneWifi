@@ -128,7 +128,7 @@ static int parse_multiap_tlv(unsigned char *buff, unsigned int len, multiap_tlv_
 
     switch (type) {
     case multiap_tlv_type_al_mac_address: {
-        wifi_util_info_print(WIFI_APPS, "Found AL MAC Address TLV\n");
+        wifi_util_info_print(WIFI_CTRL, "Found AL MAC Address TLV\n");
         memcpy(out_buff, tlv->value, rlen);
         wifi_util_info_print(WIFI_APPS, "%s:%d len=%d\n", __func__, __LINE__, ntohs(tlv->len));
     } break;
@@ -166,7 +166,8 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
     mac_address_t dst;
     wifi_ctrl_t *ctrl = NULL;
     char st[64];
-    char *ifaces[MAX_IFACES] = { "brlan0", "wl1", "wl0.1", "wl0", "wl0.7", "wl1.7", "wl2.1", "wl1.1" };
+    //char *ifaces[MAX_IFACES] = { "brlan0", "wl1", "wl0.1", "wl0", "wl0.7", "wl1.7", "wl2.1", "wl1.1" };
+    char *ifaces[MAX_IFACES] = { "wl1.1", "wl0.1", "brlan0" };
     unsigned char buff[128] = { 0 };
     multiap_supported_srv_t *srv = (multiap_supported_srv_t *)buff;
     int device_supporting_service = get_service_type();
@@ -187,7 +188,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
             __func__, __LINE__);
         return -1;
     }
-    wifi_util_info_print(WIFI_APPS, "split brain is detected in the network\n");
+    wifi_util_info_print(WIFI_CTRL, "split brain is detected in the network\n");
 
     state = multiap_state_completed;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -200,7 +201,8 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
     }
 
     uint8_mac_to_string_mac(dst, st);
-    wifi_util_info_print(WIFI_APPS, "%s:%d sender mac=%s\n", __func__, __LINE__, st);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d sender mac=%s\n", __func__, __LINE__, st);
+
     for (int i = 0; i < MAX_IFACES; ++i) {
         len = create_autoconfig_resp_msg(msg, (unsigned char *)dst, ifaces[i]);
         wifi_util_error_print(WIFI_APPS, "After create_autoconfig_resp_msg got len = %s:%d :%d\n",
@@ -428,7 +430,7 @@ static int send_frame(unsigned char *buff, unsigned int len, bool multicast, cha
     struct sockaddr_ll sadr_ll;
     mac_address_t multi_addr = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
-    wifi_util_info_print(WIFI_CTRL "Sending frame on %s\n", ifname);
+    wifi_util_info_print(WIFI_CTRL ,"Sending frame on %s\n", ifname);
 
     sadr_ll.sll_ifindex = (int)(if_nametoindex(ifname));
     sadr_ll.sll_halen = ETH_ALEN; // length of destination mac address
