@@ -771,7 +771,7 @@ static void *receive_multicast_message(void *ctx)
         socket_count++;
         wifi_util_info_print(WIFI_APPS, "%s:%d sockets[i]= %d\n", __func__, __LINE__, sockets[i]);
     }
-
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905 ctrl->multiap_sta_enabled=%d.\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     while (ctrl->multiap_sta_enabled == true) {
         wifi_util_info_print(WIFI_APPS, "%s:%d Waiting for data on %d sockets\n", __func__, __LINE__, socket_count);
         int ret = poll(poll_fds, socket_count, -1); // -1 = infinite timeout
@@ -841,7 +841,6 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
     // Hardcoded interface names for debugging
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    static int delay_count = 0;
     const char *interfaces[] = {"wl1","wl0","brlan0"};
     unsigned int num_interfaces = sizeof(interfaces) / sizeof(interfaces[0]);
 
@@ -850,14 +849,7 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
             __func__, __LINE__);
         return RETURN_OK;
     }
-
-    delay_count++;
-    if (delay_count < 3) {
-        wifi_util_info_print(WIFI_APPS,
-            "%s:%d IEEE1905: delaying autoconfig search sending \n", __func__, __LINE__);
-            return RETURN_OK;
-    }
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d calling send_multiap_broadcast_message().\n",__func__, __LINE__);
     // Send autoconfiguration search on each interface
     for (unsigned int i = 0; i < num_interfaces; i++) {
         send_multiap_broadcast_message((char *)interfaces[i]);
@@ -916,6 +908,9 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         return RETURN_ERR;
     }
 
+    //if(is_device_type_xle()){
+        ctrl->multiap_sta_enabled = true;
+    //}
     if (receive_multiap_message() != 0) {
         close(send_sock);
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
@@ -925,10 +920,12 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 
     /*start the station vaps only if none of the station is connected to vaps because in XLE when
     its in GW mode(with WAN failover) stations are connected to the GW then we should not start the station vaps*/
+#if 0
     if (!is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
         start_station_vaps(true, true);
         ctrl->multiap_sta_enabled = true;
     }
+#endif
     // Add multiap timer task
 #define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
     state = multiap_state_sta_create_and_connect;
@@ -941,9 +938,9 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 
 static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 {
-    wifi_ctrl_t *ctrl = NULL;
+    //wifi_ctrl_t *ctrl = NULL;
 
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    //ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //Close global sockets
     for (int i = 0; i < socket_count; i++) {
         if (sockets[i] >= 0) {
@@ -957,14 +954,15 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     state = multiap_state_none;
     pthread_cancel(tid);
     //Stop station VAPs
-    if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
-        ctrl->multiap_sta_enabled = false;
+    // commenting for testing purpose (Since  ctrl->multiap_sta_enabled is set to false using rbuscli for stop case)
+    //if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
+        //ctrl->multiap_sta_enabled = false;
         start_station_vaps(true, false);
-    }
+    //}
     close(send_sock);
     send_sock = -1;
 
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Multiap application stopped\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: Multiap application stopped\n", __func__, __LINE__);
 
     return RETURN_OK;
 }
