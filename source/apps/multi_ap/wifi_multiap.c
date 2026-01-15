@@ -925,7 +925,9 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a send socket\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-
+    //if(is_device_type_xle()){
+        ctrl->multiap_sta_enabled = true;
+    //}
     if (receive_multiap_message() != 0) {
         close(send_sock);
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to create a receive thread for Multip messages\n",
@@ -953,9 +955,8 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 
 static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 {
-    wifi_ctrl_t *ctrl = NULL;
-
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    //wifi_ctrl_t *ctrl = NULL;
+    //ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //Close global sockets
     for (int i = 0; i < socket_count; i++) {
         if (sockets[i] >= 0) {
@@ -969,14 +970,14 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     state = multiap_state_none;
     pthread_cancel(tid);
     //Stop station VAPs
-    if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
-        ctrl->multiap_sta_enabled = false;
+    //if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
+        //ctrl->multiap_sta_enabled = false;
         start_station_vaps(true, false);
-    }
+    //}
     close(send_sock);
     send_sock = -1;
 
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Multiap application stopped\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: Multiap application stopped\n", __func__, __LINE__);
 
     return RETURN_OK;
 }
