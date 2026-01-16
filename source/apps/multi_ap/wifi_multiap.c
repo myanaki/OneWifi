@@ -843,7 +843,7 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     const char *interfaces[] = {"wl1","wl0","brlan0"};
     unsigned int num_interfaces = sizeof(interfaces) / sizeof(interfaces[0]);
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     if (ctrl->multiap_sta_enabled == false) {
         wifi_util_error_print(WIFI_APPS, "%s:%d called when multiap disabled \n",
             __func__, __LINE__);
@@ -907,10 +907,11 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a send socket\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     //if(is_device_type_xle()){
         ctrl->multiap_sta_enabled = true;
     //}
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     if (receive_multiap_message() != 0) {
         close(send_sock);
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
@@ -1008,7 +1009,7 @@ static int multiap_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
 static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     if (ctrl->multiap_sta_enabled == false) {
         wifi_util_error_print(WIFI_APPS, "%s:%d called when multiap disabled evt:%s\n",
             __func__, __LINE__, wifi_event_subtype_to_string(sub_type));
@@ -1106,7 +1107,7 @@ int multiap_deinit(wifi_app_t *app)
     send_sock = -1;
 
     state = multiap_state_none;
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     //Stop station VAPs
     if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
         ctrl->multiap_sta_enabled = false;

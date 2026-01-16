@@ -487,7 +487,7 @@ int process_udhcp_ip_check(vap_svc_t *svc)
     wifi_ctrl_t *ctrl;
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
-    
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status value : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     if (!(ctrl->rf_status_down) && !(ctrl->multiap_sta_enabled)) {
         memset(value, '\0', sizeof(value));
@@ -926,6 +926,7 @@ void ext_try_connecting(vap_svc_t *svc)
         // Set to disabled in order to detect state change on connection retry
         reset_sta_state(svc, vap_index);
         ext->conn_retry++;
+        wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
         if (wifi_hal_connect(vap_index, &candidate->external_ap) == RETURN_ERR) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d sta connect failed for vap index: %d, "
                 "retry after timeout\n", __func__, __LINE__, vap_index);
@@ -1254,6 +1255,7 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
         update_vap_hal_prop_bridge_name(svc, tgt_vap_map);
         wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d Ignite-Enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, map->vap_array[i].u.sta_info.ignite_enabled);
         publish_endpoint_enable();
+        wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
         if ((ctrl->rf_status_down) || (ctrl->multiap_sta_enabled)) {
             ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
                  __LINE__);
@@ -1772,7 +1774,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_trigger_disconnection_timeout_handler_id);
                 ext->ext_trigger_disconnection_timeout_handler_id = 0;
             }
-
+            wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
             if ((ctrl->network_mode != rdk_dev_mode_type_em_node) && !(ctrl->multiap_sta_enabled)) {
                 scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_ip_check_id,
                     process_udhcp_ip_check, svc, EXT_UDHCP_IP_CHECK_INTERVAL,

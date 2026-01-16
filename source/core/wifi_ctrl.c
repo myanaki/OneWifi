@@ -242,6 +242,7 @@ void selfheal_event_publish(wifi_ctrl_t *ctrl)
 
 void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
 {
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     if (ctrl->rf_status_down == true  || ctrl->multiap_sta_enabled == true ) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Sta selfheal mode disabled due \n",
             __func__, __LINE__);
@@ -283,6 +284,7 @@ void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
 bool is_sta_enabled(void)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     wifi_util_dbg_print(WIFI_CTRL,"[%s:%d] device mode:%d active_gw_check:%d and rf_status_down=%d\r\n",
        __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check,  ctrl->rf_status_down);
    return ((ctrl->network_mode == rdk_dev_mode_type_ext ||
