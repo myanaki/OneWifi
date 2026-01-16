@@ -866,16 +866,19 @@ static int multiap_timeout_fun(void* arg)
     if (state == multiap_state_search_rsp_pending) {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Triggering multiap exec timeout event for sending\n",
             __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: wifi_event_exec_timeout.\n",
+            __func__, __LINE__);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
-#define MULTIAP_RESP_TIMEOUT (60000)
+#define MULTIAP_RESP_TIMEOUT (1000)
          scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, MULTIAP_RESP_TIMEOUT);
     } else if (state == multiap_state_sta_create_and_connect) {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Failed to connect/find GW device within timeout\n",
             __func__, __LINE__);
-        state = multiap_state_search_rsp_pending;
+        //state = multiap_state_search_rsp_pending;
         // Stop the scheduler
         //scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
         //apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+        state = multiap_state_none;
     } else {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905:(UNHANDLED CASE)  Timeout on state : %d\n",
             __func__, __LINE__, state);
@@ -1020,7 +1023,10 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
                  (If required we can try reconnecting)
          */
         multiap_event_hal_sta_conn_status(apps, arg);
-        //state = multiap_state_search_rsp_pending;
+        state = multiap_state_search_rsp_pending;
+        // Stop the scheduler
+        scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
+		scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, 1000);
         wifi_util_info_print(WIFI_APPS, "%s:%d, Handling Evt: %s\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
         break;
