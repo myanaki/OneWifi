@@ -771,7 +771,7 @@ static void *receive_multicast_message(void *ctx)
         socket_count++;
         wifi_util_info_print(WIFI_APPS, "%s:%d sockets[i]= %d\n", __func__, __LINE__, sockets[i]);
     }
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     while (ctrl->multiap_sta_enabled == true) {
         wifi_util_info_print(WIFI_APPS, "%s:%d Waiting for data on %d sockets\n", __func__, __LINE__, socket_count);
         int ret = poll(poll_fds, socket_count, -1); // -1 = infinite timeout
@@ -843,7 +843,7 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     const char *interfaces[] = {"wl1","wl0","brlan0"};
     unsigned int num_interfaces = sizeof(interfaces) / sizeof(interfaces[0]);
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     if (ctrl->multiap_sta_enabled == false) {
         wifi_util_error_print(WIFI_APPS, "%s:%d called when multiap disabled \n",
             __func__, __LINE__);
@@ -914,13 +914,14 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
             __func__, __LINE__);
         return RETURN_ERR;
     }
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     /*start the station vaps only if none of the station is connected to vaps because in XLE when
     its in GW mode(with WAN failover) stations are connected to the GW then we should not start the station vaps*/
     if (!is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
         start_station_vaps(true, true);
         ctrl->multiap_sta_enabled = true;
     }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     // Add multiap timer task
 #define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
     state = multiap_state_sta_create_and_connect;
@@ -933,9 +934,8 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 
 static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 {
-    //wifi_ctrl_t *ctrl = NULL;
-
-    //ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_ctrl_t *ctrl = NULL;
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //Close global sockets
     for (int i = 0; i < socket_count; i++) {
         if (sockets[i] >= 0) {
@@ -948,6 +948,7 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     }
     state = multiap_state_none;
     pthread_cancel(tid);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     //Stop station VAPs
     // commenting for testing purpose (Since  ctrl->multiap_sta_enabled is set to false using rbuscli for stop case)
     //if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
@@ -1003,7 +1004,7 @@ static int multiap_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
 static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     if (ctrl->multiap_sta_enabled == false) {
         wifi_util_error_print(WIFI_APPS, "%s:%d called when multiap disabled evt:%s\n",
             __func__, __LINE__, wifi_event_subtype_to_string(sub_type));
@@ -1101,7 +1102,7 @@ int multiap_deinit(wifi_app_t *app)
     send_sock = -1;
 
     state = multiap_state_none;
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     //Stop station VAPs
     if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
         ctrl->multiap_sta_enabled = false;

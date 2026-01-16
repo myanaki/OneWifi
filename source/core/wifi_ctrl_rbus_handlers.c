@@ -187,7 +187,7 @@ bus_error_t set_multiap_enable(char *name, raw_data_t *p_data, bus_user_data_t *
     multiap_enable = p_data->raw_data.b;
     ctrl->multiap_sta_enabled = multiap_enable;
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_enable : %d.\n", __func__, __LINE__,multiap_enable);
-
+    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     if (multiap_enable) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d wifi_event_exec_start.\n", __func__, __LINE__);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
