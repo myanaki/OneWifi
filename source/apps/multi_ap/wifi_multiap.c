@@ -870,7 +870,11 @@ static int multiap_timeout_fun(void* arg)
             __func__, __LINE__);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
 #define MULTIAP_RESP_TIMEOUT (1000)
-         scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, MULTIAP_RESP_TIMEOUT);
+         //scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, MULTIAP_RESP_TIMEOUT);
+         // Stop the scheduler
+        scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
+		scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
+		NULL, MULTIAP_RESP_TIMEOUT, 0, FALSE);
     } else if (state == multiap_state_sta_create_and_connect) {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Failed to connect/find GW device within timeout\n",
             __func__, __LINE__);
@@ -1026,8 +1030,10 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
         state = multiap_state_search_rsp_pending;
         // Stop the scheduler
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
-		scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, 1000);
-        wifi_util_info_print(WIFI_APPS, "%s:%d, Handling Evt: %s\n", __func__, __LINE__,
+        scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
+        NULL, 1000, 0, FALSE);
+		//scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, 1000);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d, Handling Evt: %s\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
         break;
 
