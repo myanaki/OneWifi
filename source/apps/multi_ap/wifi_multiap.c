@@ -46,6 +46,12 @@
 
 #define FAILOVER_ENABLE "Device.X_RDK_GatewayManagement.Failover.Enable"
 
+#if 0
+#define MP_IS_XLE is_device_type_xle()
+#else
+#define MP_IS_XLE true
+#endif
+
 static int create_autoconfig_search(unsigned char *buff, char *ifname);
 static int send_frame(unsigned char *buff, unsigned int len, bool multicast, char *ifname);
 static void send_multiap_broadcast_message(char *ifname);
@@ -695,7 +701,7 @@ static void proto_process(unsigned char *data, unsigned int len)
 
     switch (htons(cmdu->type)) {
     case multiap_msg_type_autoconf_search:
-        if (is_device_type_xle()) {
+        if (MP_IS_XLE) {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XLE Extender - processing autoconfig search from gateway\n",
             __func__, __LINE__);
             if (state == multiap_state_none) {
@@ -915,6 +921,10 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         return RETURN_ERR;
     }
 
+    if(MP_IS_XLE){
+        ctrl->multiap_sta_enabled = true;
+    }
+
     if (receive_multiap_message() != 0) {
         close(send_sock);
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
@@ -924,16 +934,18 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     /*start the station vaps only if none of the station is connected to vaps because in XLE when
     its in GW mode(with WAN failover) stations are connected to the GW then we should not start the station vaps*/
-    if (!is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
+    if (!(MP_IS_XLE) && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
         start_station_vaps(true, true);
         ctrl->multiap_sta_enabled = true;
     }
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     // Add multiap timer task
+#if 0
 #define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
     state = multiap_state_sta_create_and_connect;
     scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, MULTIAP_CONNECT_TIMEOUT);
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
+#endif
 
 
     return RETURN_OK;
