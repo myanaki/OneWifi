@@ -170,7 +170,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
 {
     unsigned char msg[MAX_BUFF_SZ];
     mac_address_t dst;
-    wifi_ctrl_t *ctrl = NULL;
+    //wifi_ctrl_t *ctrl = NULL;
     char st[64];
     char *ifaces[MAX_IFACES] = { "brlan0", "wl1", "wl0.1", "wl0", "wl0.7", "wl1.7", "wl2.1", "wl1.1" };
     unsigned char buff[128] = { 0 };
@@ -195,8 +195,8 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
     }
     wifi_util_info_print(WIFI_APPS, "split brain is detected in the network\n");
 
-    state = multiap_state_completed;
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    //state = multiap_state_completed;
+    //ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     // Extract AL MAC address
     if (parse_multiap_tlv(data, len, multiap_tlv_type_al_mac_address, &dst, sizeof(mac_address_t)) <
@@ -215,9 +215,9 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
     }
 
     wifi_util_info_print(WIFI_APPS, "autoconfig response is sent to Gateway\n");
-    set_to_extender_mode(&ctrl->handle, FAILOVER_ENABLE, 0, 0);
+    //set_to_extender_mode(&ctrl->handle, FAILOVER_ENABLE, 0, 0);
 
-    set_to_extender_mode(&ctrl->handle, WIFI_DEVICE_MODE, 1, 1);
+    //set_to_extender_mode(&ctrl->handle, WIFI_DEVICE_MODE, 1, 1);
 
     wifi_util_info_print(WIFI_APPS,
         "switching the device to extender mode split brain recovered\n");
@@ -240,7 +240,6 @@ static int handle_autoconf_search_resp(unsigned char *data, unsigned int len)
     int rc = 0;
     wifi_vap_info_map_t *wifi_vap_map = NULL;
 
-    wifi_util_info_print(WIFI_APPS, "Enter %s:%d\n", __func__, __LINE__);
     memset(macfilterkey, 0, sizeof(macfilterkey));
     //  Extract STA MAC addresses
     tlv_len = parse_multiap_tlv(data, len, multiap_tlv_type_sta_mac_addr, buffer, sizeof(buffer));
@@ -561,11 +560,10 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
     mac_address_from_name(interface_name, src_addr);
     wifi_mgr_t *g_wifi_mgr = (wifi_mgr_t *)get_wifimgr_obj();
     uint8_mac_to_string_mac(src_addr, st);
-    wifi_util_info_print(WIFI_APPS, "string from mac_address_from_name %s =%s \n", interface_name,
-        st);
+    wifi_util_info_print(WIFI_APPS, "string from mac_address_from_name SRC %s =%s \n", interface_name,st);
 
     uint8_mac_to_string_mac(dst, st);
-    wifi_util_info_print(WIFI_APPS, "string from mac_address_from_name of dest==%s \n", st);
+    wifi_util_info_print(WIFI_APPS, "string from mac_address_from_name of DST ==%s:%s \n",interface_name, st);
     memcpy(tmp, (unsigned char *)dst, sizeof(mac_address_t));
     tmp += sizeof(mac_address_t);
 
@@ -655,17 +653,14 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
     tlv = (multiap_tlv_t *)tmp;
     tlv->type = multiap_tlv_type_sta_mac_addr;
     for (itr = 0; itr < getNumberRadios(); itr++) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d index=%d and  getNumberRadios()=%d", __func__,
-            __LINE__, itr, getNumberRadios());
         get_sta_mac_address_for_radio(&g_wifi_mgr->hal_cap.wifi_prop, itr, mac);
         uint8_mac_to_string_mac(mac, st);
-        wifi_util_info_print(WIFI_APPS, "%s:%d pramod mac_adr= %s\n", __func__, __LINE__, st);
+        wifi_util_info_print(WIFI_APPS, "%s:%d mac_adr= %s\n", __func__, __LINE__, st);
         memcpy(&mac_buffer[offset], mac, MAC_ADDR_LEN);
         offset += MAC_ADDR_LEN;
     }
 
     tlv->len = htons(offset);
-    wifi_util_info_print(WIFI_APPS, "%s:%d pramod offset=%d\n", __func__, __LINE__, offset);
     memcpy(tlv->value, (unsigned char *)mac_buffer, offset);
 
     tmp += (sizeof(multiap_tlv_t) + offset);
@@ -749,7 +744,7 @@ static void *receive_multicast_message(void *ctx)
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7", "brlan1", "wl0.7" };
+    const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7",  "wl0.7", "brlan1" };
     char buffer[MAX_FRAME_SZ];
 
     struct pollfd poll_fds[MAX_IFACES];
@@ -775,7 +770,7 @@ static void *receive_multicast_message(void *ctx)
         poll_fds[i].revents = 0;
 
         socket_count++;
-        wifi_util_info_print(WIFI_APPS, "%s:%d sockets[i]= %d\n", __func__, __LINE__, sockets[i]);
+        wifi_util_info_print(WIFI_APPS, "%s:%d sockets[i]= %d (%s)\n", __func__, __LINE__, sockets[i],ifaces[i]);
     }
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     while (ctrl->multiap_sta_enabled == true) {
@@ -792,8 +787,6 @@ static void *receive_multicast_message(void *ctx)
         // Check which sockets have data
         for (int i = 0; i < socket_count; ++i) {
             if (poll_fds[i].revents & POLLIN) {
-                wifi_util_info_print(WIFI_APPS, "%s:%d Data available on socket %d\n",
-                     __func__, __LINE__, sockets[i]);
                 ssize_t len = recvfrom(sockets[i], buffer, sizeof(buffer), 0, NULL, NULL);
                 if (len < 0) {
                     wifi_util_error_print(WIFI_APPS, "%s:%d: recvfrom error: %d\n", __func__, __LINE__, errno);
@@ -802,9 +795,9 @@ static void *receive_multicast_message(void *ctx)
                 wifi_util_info_print(WIFI_APPS, "%s:%d Received %zd bytes on socket %d\n",
                     __func__, __LINE__, len, sockets[i]);
                 if (len > 0) {
-                    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Poll test - successfully received data\n", __func__, __LINE__);
+                    wifi_util_info_print(WIFI_APPS, "%s:%d Received bytes:%u socket:%d(%s)\n", __func__, __LINE__, len, sockets[i], ifaces[i]);
+					proto_process((unsigned char *)buffer, len);
                 }
-                proto_process((unsigned char *)buffer, len);
             }
             // Check for socket errors
             if (poll_fds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
