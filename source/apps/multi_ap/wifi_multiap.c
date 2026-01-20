@@ -428,8 +428,6 @@ static int send_frame(unsigned char *buff, unsigned int len, bool multicast, cha
     struct sockaddr_ll sadr_ll;
     mac_address_t multi_addr = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
-    wifi_util_info_print(WIFI_APPS, "Sending frame on %s\n", ifname);
-
     sadr_ll.sll_ifindex = (int)(if_nametoindex(ifname));
     sadr_ll.sll_halen = ETH_ALEN; // length of destination mac address
     sadr_ll.sll_protocol = htons(ETH_P_ALL);
@@ -437,7 +435,7 @@ static int send_frame(unsigned char *buff, unsigned int len, bool multicast, cha
 
     ret = (int)(sendto(send_sock, buff, len, 0, (const struct sockaddr *)&sadr_ll,
         sizeof(struct sockaddr_ll)));
-    wifi_util_info_print(WIFI_APPS, "Sent frame on %s ret val =%d\n", ifname, ret);
+    wifi_util_info_print(WIFI_APPS, "Sent frame on %s len:%d ret val =%d\n", ifname, len, ret);
 
     return ret;
 }
@@ -446,7 +444,6 @@ static void send_multiap_broadcast_message(char *ifname)
 {
     unsigned char buff[MAX_BUFF_SZ];
     unsigned int sz;
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: ===== STARTING BROADCAST MESSAGE =====\n", __func__, __LINE__);
     wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Interface: %s\n", __func__, __LINE__, ifname);
 
     //wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -466,9 +463,6 @@ static void send_multiap_broadcast_message(char *ifname)
         wifi_util_info_print(WIFI_APPS, "%s:%d: failed, err:%d\n", __func__, __LINE__);
         return;
     }
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Frame sent successfully\n", __func__, __LINE__);
-
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: ===== BROADCAST MESSAGE COMPLETED =====\n", __func__, __LINE__);
 
     wifi_util_info_print(WIFI_APPS, "IEEE1905: autoconfig_search send successful and state =%d \n", state);
     /* After sending for Autofconfig search for 50 times if no reply is
@@ -743,7 +737,7 @@ static void *receive_multicast_message(void *ctx)
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7", "brlan1", "wl0.7" };
+    const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7", "wl0.7" , "brlan1" };
     char buffer[MAX_FRAME_SZ];
 
     struct pollfd poll_fds[MAX_IFACES];
@@ -786,19 +780,16 @@ static void *receive_multicast_message(void *ctx)
         // Check which sockets have data
         for (int i = 0; i < socket_count; ++i) {
             if (poll_fds[i].revents & POLLIN) {
-                wifi_util_info_print(WIFI_APPS, "%s:%d Data available on socket %d\n",
-                     __func__, __LINE__, sockets[i]);
                 ssize_t len = recvfrom(sockets[i], buffer, sizeof(buffer), 0, NULL, NULL);
                 if (len < 0) {
                     wifi_util_error_print(WIFI_APPS, "%s:%d: recvfrom error: %d\n", __func__, __LINE__, errno);
                     continue;
                 }
-                wifi_util_info_print(WIFI_APPS, "%s:%d Received %zd bytes on socket %d\n",
-                    __func__, __LINE__, len, sockets[i]);
+                wifi_util_info_print(WIFI_APPS, "%s:%d Received %zd bytes on socket:%d(%s)\n",
+                    __func__, __LINE__, len, sockets[i], ifaces[i]);
                 if (len > 0) {
-                    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Poll test - successfully received data\n", __func__, __LINE__);
+                    proto_process((unsigned char *)buffer, len);
                 }
-                proto_process((unsigned char *)buffer, len);
             }
             // Check for socket errors
             if (poll_fds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
@@ -849,7 +840,6 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
             __func__, __LINE__);
         return RETURN_OK;
     }
-    wifi_util_info_print(WIFI_CTRL, "%s:%d calling send_multiap_broadcast_message().\n",__func__, __LINE__);
     // Send autoconfiguration search on each interface
     for (unsigned int i = 0; i < num_interfaces; i++) {
         send_multiap_broadcast_message((char *)interfaces[i]);
