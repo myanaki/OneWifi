@@ -737,7 +737,7 @@ static void *receive_multicast_message(void *ctx)
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7", "wl0.7" , "brlan1" };
+    const char *ifaces[MAX_IFACES] = { "wl1", "wl1.1", "wl0", "wl0.1", "brlan0", "wl1.7", "wl0.7" , "brlan1" };
     char buffer[MAX_FRAME_SZ];
 
     struct pollfd poll_fds[MAX_IFACES];
@@ -854,8 +854,7 @@ static int multiap_timeout_fun(void* arg)
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if (state == multiap_state_search_rsp_pending) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Triggering multiap exec timeout event for sending\n",
-            __func__, __LINE__);
+        static int count = 16;
         wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: wifi_event_exec_timeout.\n",
             __func__, __LINE__);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
@@ -863,6 +862,12 @@ static int multiap_timeout_fun(void* arg)
          //scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, MULTIAP_RESP_TIMEOUT);
          // Stop the scheduler
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
+        if (count <= 0){
+            count = 16;
+            wifi_util_info_print(WIFI_APPS, "%s:%d Max send count reached,Stopping Send.\n",__func__, __LINE__);
+            return RETURN_OK;
+        }
+        count--;
 		scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
 		NULL, MULTIAP_RESP_TIMEOUT, 0, FALSE);
     } else if (state == multiap_state_sta_create_and_connect) {
