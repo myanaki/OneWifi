@@ -909,13 +909,14 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a send socket\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-
+#if 0
     if (receive_multiap_message() != 0) {
         close(send_sock);
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
             __func__, __LINE__);
         return RETURN_ERR;
     }
+#endif
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     /*start the station vaps only if none of the station is connected to vaps because in XLE when
     its in GW mode(with WAN failover) stations are connected to the GW then we should not start the station vaps*/
@@ -1023,6 +1024,13 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
          */
         multiap_event_hal_sta_conn_status(apps, arg);
         state = multiap_state_search_rsp_pending;
+        wifi_util_error_print(WIFI_APPS, "%s:%d Creating Rx thread.\n",__func__, __LINE__);
+        if (receive_multiap_message() != 0) {
+        close(send_sock);
+        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+        }
         // Stop the scheduler
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
