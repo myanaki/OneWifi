@@ -45,6 +45,8 @@
 #include "scheduler.h"
 
 #define FAILOVER_ENABLE "Device.X_RDK_GatewayManagement.Failover.Enable"
+#define MULTIAP_RESP_TIMEOUT (1000)
+#define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
 
 static int create_autoconfig_search(unsigned char *buff, char *ifname);
 static int send_frame(unsigned char *buff, unsigned int len, bool multicast, char *ifname);
@@ -692,7 +694,6 @@ static void proto_process(unsigned char *data, unsigned int len)
         if (is_device_type_xle()) {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XLE Extender - processing autoconfig search from gateway\n",
             __func__, __LINE__);
-            if (state == multiap_state_none) {
                 wifi_util_info_print(WIFI_APPS, "%s:%d :Got a  packet of type =%d\n processing it",
                     __func__, __LINE__, htons(cmdu->type));
                 ret = handle_autoconf_search(data, len);
@@ -704,7 +705,6 @@ static void proto_process(unsigned char *data, unsigned int len)
                     wifi_util_info_print(WIFI_APPS,
                         "autoconfig search response sent moving to extender mode\n");
                 }
-            }
         } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
             wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XB Gateway - ignoring autoconfig search (gateway mode)\n",
                 __func__, __LINE__);
@@ -858,7 +858,6 @@ static int multiap_timeout_fun(void* arg)
         wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: wifi_event_exec_timeout.\n",
             __func__, __LINE__);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
-#define MULTIAP_RESP_TIMEOUT (1000)
          //scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, MULTIAP_RESP_TIMEOUT);
          // Stop the scheduler
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
@@ -922,15 +921,13 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
     its in GW mode(with WAN failover) stations are connected to the GW then we should not start the station vaps*/
     if (!is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
         start_station_vaps(true, true);
-        ctrl->multiap_sta_enabled = true;
+        state = multiap_state_sta_create_and_connect;
+        scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
+		NULL, MULTIAP_CONNECT_TIMEOUT, 0, FALSE);
+        wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
     }
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     // Add multiap timer task
-#define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
-    state = multiap_state_sta_create_and_connect;
-    scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, MULTIAP_CONNECT_TIMEOUT);
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
-
 
     return RETURN_OK;
 }
@@ -949,6 +946,7 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
             wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Socket already closed\n", __func__, __LINE__);
         }
     }
+    socket_count = 0;
     state = multiap_state_none;
     pthread_cancel(tid);
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
@@ -1034,7 +1032,7 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
         // Stop the scheduler
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
-        NULL, 1000, 0, FALSE);
+        NULL, MULTIAP_RESP_TIMEOUT, 0, FALSE);
 		//scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, 1000);
         wifi_util_info_print(WIFI_CTRL, "%s:%d, Handling Evt: %s\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
@@ -1119,7 +1117,7 @@ int multiap_deinit(wifi_app_t *app)
     state = multiap_state_none;
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     //Stop station VAPs
-    if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
+    if (ctrl != NULL) {
         ctrl->multiap_sta_enabled = false;
         start_station_vaps(true, false);
     }
@@ -1130,14 +1128,11 @@ int multiap_deinit(wifi_app_t *app)
 
 int multiap_init(wifi_app_t *app, unsigned int create_flag)
 {
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (app_init(app, create_flag) != 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d: Failed to register app!\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-#define MULTIAP_INIT_TIMEOUT 5000
-    scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
-        NULL, MULTIAP_INIT_TIMEOUT, 0, FALSE);
+
     state = multiap_state_none;
     wifi_util_info_print(WIFI_APPS, "%s:%d: IEEE1905: Init multiap_app \n", __func__, __LINE__);
 
