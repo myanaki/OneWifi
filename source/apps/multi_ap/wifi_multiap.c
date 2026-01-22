@@ -249,11 +249,12 @@ static int handle_autoconf_search_resp(unsigned char *data, unsigned int len)
         memcpy(mac, &buffer[i * MAC_ADDR_LEN], MAC_ADDR_LEN);
         to_mac_str(mac, new_mac_str);
         str_tolower(new_mac_str);
-        wifi_util_info_print(WIFI_APPS, "mac_str array i val=%d: %s \n", i, new_mac_str);
+        wifi_util_info_print(WIFI_APPS, "%s:%d mac_str array i val=%d: %s \n",__func__, __LINE__,i, new_mac_str);
         for (itr = 0; itr < 2; itr++) {
             wifi_vap_map = get_wifidb_vap_map(itr);
             for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
                 vap_index = wifi_vap_map->vap_array[itrj].vap_index;
+                wifi_util_info_print(WIFI_APPS, "%s:%d vap_index=%d\n",__func__, __LINE__,vap_index);
                 rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
 
                 if (rdk_vap_info == NULL) {
@@ -277,7 +278,7 @@ static int handle_autoconf_search_resp(unsigned char *data, unsigned int len)
 
                 to_mac_str(mac, new_mac_str);
                 str_tolower(new_mac_str);
-                wifi_util_dbg_print(WIFI_APPS, "new_mac_str %s\n", new_mac_str);
+                wifi_util_info_print(WIFI_APPS, "%s:%d new_mac_str %s\n",__func__, __LINE__, new_mac_str);
                 temp_acl_entry = hash_map_get(rdk_vap_info->acl_map, new_mac_str);
 
                 if (temp_acl_entry != NULL) {
@@ -290,17 +291,18 @@ static int handle_autoconf_search_resp(unsigned char *data, unsigned int len)
                 str_tolower(new_mac_str);
 
 #ifdef NL80211_ACL
+                wifi_util_info_print(WIFI_APPS, "%s : %d rdk_vap_info->vap_index =%d.\n",__func__, __LINE__,rdk_vap_info->vap_index);
                 if (wifi_hal_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
 #else
                 if (wifi_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
 #endif
-                    wifi_util_dbg_print(WIFI_APPS, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
+                    wifi_util_info_print(WIFI_APPS, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                         __func__,__LINE__, rdk_vap_info->vap_index, new_mac_str);
                     continue;
                 }
 
                 hash_map_put(rdk_vap_info->acl_map, strdup(new_mac_str), acl_entry);
-                snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, new_mac_str);
+                snprintf(macfilterkey, sizeof(macfilterkey), "IEEE1905 %s-%s", rdk_vap_info->vap_name, new_mac_str);
             }
         }
     }
@@ -1088,7 +1090,7 @@ int multiap_event(wifi_app_t *app, wifi_event_t *event)
         break;
 
     case wifi_event_type_hal_ind:
-        event_hal_ind_multiap(app, event->sub_type, NULL);
+        event_hal_ind_multiap(app, event->sub_type,event->u.core_data.msg);
         break;
 
     default:
