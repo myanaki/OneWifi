@@ -62,6 +62,7 @@ static int send_sock = -1;
 pthread_t tid;
 
 static volatile multiap_state_t state = multiap_state_none;
+static char connected_interface[IFNAMSIZ] = {0};
 
 static int get_service_type()
 {
@@ -168,7 +169,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
     mac_address_t dst;
     wifi_ctrl_t *ctrl = NULL;
     char st[64];
-    char *ifaces[MAX_IFACES] = { "brlan0", "wl1", "wl0.1", "wl0", "wl0.7", "wl1.7", "wl2.1", "wl1.1" };
+    //char *ifaces[MAX_IFACES] = { "brlan0", "wl1", "wl0.1", "wl0", "wl0.7", "wl1.7", "wl2.1", "wl1.1" };
     unsigned char buff[128] = { 0 };
     multiap_supported_srv_t *srv = (multiap_supported_srv_t *)buff;
     int device_supporting_service = get_service_type();
@@ -203,11 +204,19 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
 
     uint8_mac_to_string_mac(dst, st);
     wifi_util_info_print(WIFI_APPS, "%s:%d sender mac=%s\n", __func__, __LINE__, st);
-    for (int i = 0; i < MAX_IFACES; ++i) {
+    /* for (int i = 0; i < MAX_IFACES; ++i) {
         len = create_autoconfig_resp_msg(msg, (unsigned char *)dst, ifaces[i]);
         wifi_util_error_print(WIFI_APPS, "After create_autoconfig_resp_msg got len = %s:%d :%d\n",
             __func__, __LINE__, len);
         send_frame(msg, len, false, ifaces[i]);
+    } */
+   /* Send response only on connected interface if available */
+    if (strlen(connected_interface) > 0) {
+        len = create_autoconfig_resp_msg(msg, (unsigned char *)dst, connected_interface);
+        wifi_util_error_print(WIFI_APPS, "After create_autoconfig_resp_msg got len = %s:%d :%d\n",
+            __func__, __LINE__, len);
+        send_frame(msg, len, false, connected_interface);
+        wifi_util_info_print(WIFI_APPS, "Autoconfig response sent on %s\n", connected_interface);
     }
 
     wifi_util_info_print(WIFI_APPS, "autoconfig response is sent to Gateway\n");
@@ -832,8 +841,8 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
     // Hardcoded interface names for debugging
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    const char *interfaces[] = {"wl1","wl0","brlan0"};
-    unsigned int num_interfaces = sizeof(interfaces) / sizeof(interfaces[0]);
+    //const char *interfaces[] = {"wl1","wl0","brlan0"};
+    //unsigned int num_interfaces = sizeof(interfaces) / sizeof(interfaces[0]);
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     if (ctrl->multiap_sta_enabled == false) {
         wifi_util_error_print(WIFI_APPS, "%s:%d called when multiap disabled \n",
@@ -841,8 +850,13 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
         return RETURN_OK;
     }
     // Send autoconfiguration search on each interface
-    for (unsigned int i = 0; i < num_interfaces; i++) {
-        send_multiap_broadcast_message((char *)interfaces[i]);
+    //for (unsigned int i = 0; i < num_interfaces; i++) {
+        //send_multiap_broadcast_message((char *)interfaces[i]);
+    //}
+    if (strlen(connected_interface) > 0) {
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Sending broadcast on connected interface: %s\n",
+            __func__, __LINE__, connected_interface);
+        send_multiap_broadcast_message(connected_interface);
     }
 
     return RETURN_OK;
@@ -936,6 +950,7 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 {
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    memset(connected_interface, 0, sizeof(connected_interface));
     //Close global sockets
     for (int i = 0; i < socket_count; i++) {
         if (sockets[i] >= 0) {
@@ -982,6 +997,9 @@ static int multiap_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
         sta_data->bss_info.bssid[2], sta_data->bss_info.bssid[3],
         sta_data->bss_info.bssid[4], sta_data->bss_info.bssid[5]);
             wifi_util_info_print(WIFI_APPS, analytics_format_hal_core, "sta status", temp_str);
+        strncpy(connected_interface, sta_data->interface_name, sizeof(connected_interface) - 1);
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Connected on interface: %s\n",
+            __func__, __LINE__, connected_interface);
         break;
         case wifi_connection_status_disconnected:
             snprintf(temp_str, sizeof(temp_str), "disconnected : vap_index %d bssid %02x:%02x:%02x:%02x:%02x:%02x",
@@ -1086,7 +1104,7 @@ int multiap_event(wifi_app_t *app, wifi_event_t *event)
         break;
 
     case wifi_event_type_hal_ind:
-        event_hal_ind_multiap(app, event->sub_type, NULL);
+        event_hal_ind_multiap(app, event->sub_type, event->u.core_data.msg);
         break;
 
     default:
