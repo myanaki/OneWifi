@@ -45,6 +45,7 @@
 #include "scheduler.h"
 
 #define FAILOVER_ENABLE "Device.X_RDK_GatewayManagement.Failover.Enable"
+#define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
 
 static int create_autoconfig_search(unsigned char *buff, char *ifname);
 static int send_frame(unsigned char *buff, unsigned int len, bool multicast, char *ifname);
@@ -213,8 +214,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
 
     set_to_extender_mode(&ctrl->handle, WIFI_DEVICE_MODE, 1, 1);
 
-    wifi_util_info_print(WIFI_APPS,
-        "switching the device to extender mode split brain recovered\n");
+    wifi_util_info_print(WIFI_APPS,"switching the device to extender mode split brain recovered\n");
     return 0;
 }
 
@@ -894,15 +894,15 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    wifi_util_info_print(WIFI_APPS, "%s:%d Start Exec\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Starting multiap event execution\n", __func__, __LINE__);
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d Ctrl is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
     if (ctrl->rf_status_down || (ctrl->network_mode == rdk_dev_mode_type_ext)) {
-        wifi_util_error_print(WIFI_APPS,"%s:%d rf_status_down=%d or network_mode=%d is enabled hence not starting the "
-            "station\n", __func__, __LINE__, ctrl->rf_status_down, ctrl->network_mode);
+        wifi_util_error_print(WIFI_APPS, "%s:%d Station not started: rf_status_down=%d, network_mode=%d (ext_mode=%d)\n",
+        __func__, __LINE__, ctrl->rf_status_down, ctrl->network_mode, rdk_dev_mode_type_ext);
         return RETURN_ERR;
     }
 
@@ -911,29 +911,16 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a send socket\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-#if 0
-    if (receive_multiap_message() != 0) {
-        close(send_sock);
-        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
-            __func__, __LINE__);
-        return RETURN_ERR;
-    }
-#endif
-    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
+
     /*start the station vaps only if none of the station is connected to vaps because in XLE when
     its in GW mode(with WAN failover) stations are connected to the GW then we should not start the station vaps*/
     if (!is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
         start_station_vaps(true, true);
-        ctrl->multiap_sta_enabled = true;
+        state = multiap_state_sta_create_and_connect;
+        scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
+		NULL, MULTIAP_CONNECT_TIMEOUT, 0, FALSE);
+        wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
     }
-    wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
-    // Add multiap timer task
-#define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
-    state = multiap_state_sta_create_and_connect;
-    scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, MULTIAP_CONNECT_TIMEOUT);
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
-
-
     return RETURN_OK;
 }
 
@@ -951,15 +938,15 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
             wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Socket already closed\n", __func__, __LINE__);
         }
     }
+    socket_count = 0;
     state = multiap_state_none;
     pthread_cancel(tid);
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     //Stop station VAPs
-    // commenting for testing purpose (Since  ctrl->multiap_sta_enabled is set to false using rbuscli for stop case)
-    //if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
-        //ctrl->multiap_sta_enabled = false;
+    if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
+        ctrl->multiap_sta_enabled = false;
         start_station_vaps(true, false);
-    //}
+    }
     close(send_sock);
     send_sock = -1;
 

@@ -2470,23 +2470,24 @@ void process_csi_analytics_rfc(bool type)
 
 void process_multiap_rfc(bool type)
 {
-    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (rfc_param == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to fetch Ctrl RFC\n", __func__, __LINE__);
         return;
     }
     rfc_param->multiap_rfc = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
-    rfc_param->multiap_rfc);
+
     if(rfc_param->multiap_rfc) {
-        wifi_util_error_print(WIFI_CTRL, "multiap_rfc  RFC is enabled %s:%d\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d multiap_rfc RFC is Enabled & Starting station vaps\n", __func__, __LINE__);
         ctrl->multiap_sta_enabled = true;
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     } else {
-        wifi_util_error_print(WIFI_CTRL, "multiap_rfc  RFC is disabled %s:%d\n", __func__, __LINE__);
-        ctrl->multiap_sta_enabled = false;
+        wifi_util_error_print(WIFI_CTRL, "%s:%d multiap_rfc RFC is Disabled\n", __func__, __LINE__);
+        if(ctrl->multiap_sta_enabled) {
+            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+        }
 	}
     return;
 }
