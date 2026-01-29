@@ -50,6 +50,12 @@
 #define MULTIAP_RESP_TIMEOUT (1000)
 #define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
 
+#if 0
+#define MP_IS_XLE is_device_type_xle()
+#else
+#define MP_IS_XLE true
+#endif
+
 // Global variables
 static int sockets[MAX_IFACES] = { -1 };
 static int socket_count = 0;
@@ -169,7 +175,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
 {
     unsigned char msg[MAX_BUFF_SZ];
     mac_address_t dst;
-    wifi_ctrl_t *ctrl = NULL;
+    //wifi_ctrl_t *ctrl = NULL;
     char st[64];
     unsigned char buff[128] = { 0 };
     multiap_supported_srv_t *srv = (multiap_supported_srv_t *)buff;
@@ -193,8 +199,8 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
     }
     wifi_util_info_print(WIFI_APPS, "Split brain is detected in the network\n");
 
-    state = multiap_state_completed;
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    //state = multiap_state_completed;
+    //ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     // Extract AL MAC address
     if (parse_multiap_tlv(data, len, multiap_tlv_type_al_mac_address, &dst, sizeof(mac_address_t)) <
@@ -215,9 +221,9 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
         wifi_util_info_print(WIFI_APPS, "Autoconfig response sent on %s\n", recv_interface);
     }
     // Set device to extender mode
-    set_to_extender_mode(&ctrl->handle, FAILOVER_ENABLE, 0, 0);
+    //set_to_extender_mode(&ctrl->handle, FAILOVER_ENABLE, 0, 0);
 
-    set_to_extender_mode(&ctrl->handle, WIFI_DEVICE_MODE, 1, 1);
+    //set_to_extender_mode(&ctrl->handle, WIFI_DEVICE_MODE, 1, 1);
 
     wifi_util_info_print(WIFI_APPS, "Split Brain - Requesting switch the device to extender mode\n");
     return 0;
@@ -644,7 +650,6 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
     tlv->type = multiap_tlv_type_ctrl_cap;
     tlv->len = htons(sizeof(multiap_ctrl_cap_t));
     memset(&ctrl_cap, 0, sizeof(multiap_ctrl_cap_t));
-    ;
     memcpy(tlv->value, &ctrl_cap, sizeof(multiap_ctrl_cap_t));
 
     tmp += (sizeof(multiap_tlv_t) + sizeof(multiap_ctrl_cap_t));
@@ -676,7 +681,8 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
 
     tmp += (sizeof(multiap_tlv_t));
     len += (int)(sizeof(multiap_tlv_t));
-    wifi_util_info_print(WIFI_APPS, "%s%d len=%d\n", __func__, len);
+    wifi_util_info_print(WIFI_APPS, "%s:%d Autoconfig response message created successfully, total_length=%d bytes\n",
+         __func__, __LINE__, len);
     return len;
 }
 
@@ -703,7 +709,7 @@ static void proto_process(unsigned char *data, unsigned int len, char *recv_inte
 
     switch (htons(cmdu->type)) {
     case multiap_msg_type_autoconf_search:
-        if (is_device_type_xle()) {
+        if (MP_IS_XLE) {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XLE Extender - processing autoconfig search from gateway\n",
             __func__, __LINE__);
                 wifi_util_info_print(WIFI_APPS, "%s:%d Got a packet of type =%d\n processing it",
@@ -749,7 +755,7 @@ static void *receive_multicast_message(void *ctx)
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    const char *ifaces[MAX_IFACES] = { "wl1", "wl1.1", "wl0", "wl0.1", "brlan0", "wl1.7", "wl0.7" , "brlan1" };
+    const char *ifaces[MAX_IFACES] = { "wl1.1", "wl1", "wl0.1", "wl0", "brlan0", "wl1.7", "wl0.7" , "brlan1" };
     char buffer[MAX_FRAME_SZ];
 
     struct pollfd poll_fds[MAX_IFACES];
@@ -775,7 +781,7 @@ static void *receive_multicast_message(void *ctx)
         poll_fds[i].revents = 0;
 
         socket_count++;
-        wifi_util_info_print(WIFI_APPS, "%s:%d sockets[i]= %d\n", __func__, __LINE__, sockets[i]);
+        wifi_util_info_print(WIFI_APPS, "%s:%d sockets[i]= %d (%s)\n", __func__, __LINE__, sockets[i],ifaces[i]);
     }
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     while (ctrl->multiap_sta_enabled == true) {
@@ -922,12 +928,22 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 
     /*start the station vaps only if none of the station is connected to vaps because in XLE when
     its in GW mode(with WAN failover) stations are connected to the GW then we should not start the station vaps*/
-    if (!is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
+    if (!(MP_IS_XLE) && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
+        wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Starting station VAPs for multiap\n", __func__, __LINE__);
         start_station_vaps(true, true);
         state = multiap_state_sta_create_and_connect;
         scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
 		NULL, MULTIAP_CONNECT_TIMEOUT, 0, FALSE);
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
+    } else {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Creating Rx thread\n",__func__, __LINE__);
+        if (receive_multiap_message() != 0) {
+        close(send_sock);
+        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+        }
+
     }
 
     return RETURN_OK;
