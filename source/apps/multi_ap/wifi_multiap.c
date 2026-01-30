@@ -45,6 +45,7 @@
 #include "scheduler.h"
 
 #define FAILOVER_ENABLE "Device.X_RDK_GatewayManagement.Failover.Enable"
+#define MULTIAP_RESP_TIMEOUT (1000)
 #define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
 
 static int create_autoconfig_search(unsigned char *buff, char *ifname);
@@ -171,50 +172,47 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
     unsigned char buff[128] = { 0 };
     multiap_supported_srv_t *srv = (multiap_supported_srv_t *)buff;
     int device_supporting_service = get_service_type();
-
-    wifi_util_info_print(WIFI_APPS, "Enter %s:%d\n", __func__, __LINE__);
-    wifi_util_info_print(WIFI_APPS, "device_supporting_service = %d\n", device_supporting_service);
-
+    wifi_util_info_print(WIFI_APPS, "%s:%d device_supporting_service = %d\n", __func__, __LINE__, device_supporting_service);
+    //Extract Supported Service TLV
     if (parse_multiap_tlv(data, len, multiap_tlv_type_supported_service, srv, sizeof(buff)) < 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Service type TLV not found\n", __func__, __LINE__);
         return -1;
     }
-    wifi_util_error_print(WIFI_APPS, "%s:%d IEEE1905: supported_service = %d: hex value = 0x%x\n",
-        __func__, __LINE__, srv->supported_service[0], srv->supported_service[0]);
+    
     if (device_supporting_service == multiap_service_type_extender ||
         srv->supported_service[0] == multiap_service_type_extender) {
         wifi_util_error_print(WIFI_APPS,
-            "%s:%d either supporting service or supported service is extender so not replying\n",
+            "%s:%d Either supporting service or supported service is extender so not replying\n",
             __func__, __LINE__);
         return -1;
     }
-    wifi_util_info_print(WIFI_APPS, "split brain is detected in the network\n");
+    wifi_util_info_print(WIFI_APPS, "%s:%d Split brain is detected in the network\n",__func__, __LINE__);
 
     state = multiap_state_completed;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     // Extract AL MAC address
-    if (parse_multiap_tlv(data, len, multiap_tlv_type_al_mac_address, &dst, sizeof(mac_address_t)) <
+    if (parse_multiap_tlv(data, len, multiap_tlv_type_al_mac_address,&dst, sizeof(mac_address_t)) <
         0) {
-        wifi_util_error_print(WIFI_APPS, "AL MAC address TLV not found\n");
+        wifi_util_error_print(WIFI_APPS, "%s:%d AL MAC address TLV not found\n",__func__, __LINE__);
         return -1;
     }
 
     uint8_mac_to_string_mac(dst, st);
-    wifi_util_info_print(WIFI_APPS, "%s:%d sender mac=%s\n", __func__, __LINE__, st);
+    wifi_util_info_print(WIFI_APPS, "%s:%d Sender mac=%s\n",__func__, __LINE__, st);
     for (int i = 0; i < MAX_IFACES; ++i) {
         len = create_autoconfig_resp_msg(msg, (unsigned char *)dst, ifaces[i]);
-        wifi_util_error_print(WIFI_APPS, "After create_autoconfig_resp_msg got len = %s:%d :%d\n",
-            __func__, __LINE__, len);
+        wifi_util_error_print(WIFI_APPS, "%s:%d After create_autoconfig_resp_msg got len=%d\n",
+        __func__, __LINE__, len);
         send_frame(msg, len, false, ifaces[i]);
     }
+    wifi_util_info_print(WIFI_APPS, "%s:%d Autoconfig response is sent to Gateway\n",__func__, __LINE__);
 
-    wifi_util_info_print(WIFI_APPS, "autoconfig response is sent to Gateway\n");
     set_to_extender_mode(&ctrl->handle, FAILOVER_ENABLE, 0, 0);
 
     set_to_extender_mode(&ctrl->handle, WIFI_DEVICE_MODE, 1, 1);
 
-    wifi_util_info_print(WIFI_APPS,"switching the device to extender mode split brain recovered\n");
+    wifi_util_info_print(WIFI_APPS,"%s:%d Switching the device to Extender mode, Split brain Recovered\n",__func__, __LINE__);
     return 0;
 }
 
@@ -234,12 +232,12 @@ static int handle_autoconf_search_resp(unsigned char *data, unsigned int len)
     int rc = 0;
     wifi_vap_info_map_t *wifi_vap_map = NULL;
 
-    wifi_util_info_print(WIFI_APPS, "Enter %s:%d\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d Enter\n",__func__, __LINE__);
     memset(macfilterkey, 0, sizeof(macfilterkey));
     //  Extract STA MAC addresses
     tlv_len = parse_multiap_tlv(data, len, multiap_tlv_type_sta_mac_addr, buffer, sizeof(buffer));
     if (tlv_len < 0) {
-        wifi_util_error_print(WIFI_APPS, "STA MAC address TLV not found\n");
+        wifi_util_error_print(WIFI_APPS, "%s:%d STA MAC address TLV not found\n",__func__, __LINE__);
         return -1;
     }
     // This is the retriving mechanism from the TLV
@@ -249,8 +247,8 @@ static int handle_autoconf_search_resp(unsigned char *data, unsigned int len)
         memcpy(mac, &buffer[i * MAC_ADDR_LEN], MAC_ADDR_LEN);
         to_mac_str(mac, new_mac_str);
         str_tolower(new_mac_str);
-        wifi_util_info_print(WIFI_APPS, "%s:%d mac_str array i val=%d: %s \n",__func__, __LINE__,i, new_mac_str);
-        for (itr = 0; itr < 2; itr++) {
+        wifi_util_info_print(WIFI_APPS, "STA mac_str[%d]=%s\n", i, new_mac_str);
+        for (itr = 0; itr < getNumberRadios(); itr++) {
             wifi_vap_map = get_wifidb_vap_map(itr);
             for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
                 vap_index = wifi_vap_map->vap_array[itrj].vap_index;
@@ -296,13 +294,13 @@ static int handle_autoconf_search_resp(unsigned char *data, unsigned int len)
 #else
                 if (wifi_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
 #endif
-                    wifi_util_info_print(WIFI_APPS, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
+                    wifi_util_info_print(WIFI_APPS, "%s:%d wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                         __func__,__LINE__, rdk_vap_info->vap_index, new_mac_str);
                     continue;
                 }
 
                 hash_map_put(rdk_vap_info->acl_map, strdup(new_mac_str), acl_entry);
-                snprintf(macfilterkey, sizeof(macfilterkey), "IEEE1905 %s-%s", rdk_vap_info->vap_name, new_mac_str);
+                snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, new_mac_str);
             }
         }
     }
@@ -327,7 +325,7 @@ static int create_autoconfig_search(unsigned char *buff, char *interface_name)
     mac_address_from_name(interface_name, src_addr);
 
     uint8_mac_to_string_mac(src_addr, st);
-    wifi_util_info_print(WIFI_APPS, "st from mac_address_from_name =%s \n", st);
+    wifi_util_info_print(WIFI_APPS, "st from mac_address_from_name =%s\n", st);
 
     memcpy(tmp, (unsigned char *)multi_addr, sizeof(mac_address_t));
     tmp += sizeof(mac_address_t);
@@ -384,7 +382,8 @@ static int create_autoconfig_search(unsigned char *buff, char *interface_name)
     tlv = (multiap_tlv_t *)(tmp);
     tlv->type = multiap_tlv_type_supported_service;
     tlv->len = htons(sizeof(multiap_enum_type_t) + 1);
-    tlv->value[0] = 1;                    // Number of services
+    // Number of services
+    tlv->value[0] = 1;
     memcpy(&tlv->value[1], &service_type, sizeof(multiap_enum_type_t));
 
     tmp += (sizeof(multiap_tlv_t) + sizeof(multiap_enum_type_t) + 1);
@@ -431,14 +430,14 @@ static int send_frame(unsigned char *buff, unsigned int len, bool multicast, cha
     mac_address_t multi_addr = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
     sadr_ll.sll_ifindex = (int)(if_nametoindex(ifname));
-    sadr_ll.sll_halen = ETH_ALEN; // length of destination mac address
+    // length of destination mac address
+    sadr_ll.sll_halen = ETH_ALEN;
     sadr_ll.sll_protocol = htons(ETH_P_ALL);
     memcpy(sadr_ll.sll_addr, (multicast == true) ? multi_addr : hdr->dst, sizeof(mac_address_t));
 
     ret = (int)(sendto(send_sock, buff, len, 0, (const struct sockaddr *)&sadr_ll,
         sizeof(struct sockaddr_ll)));
     wifi_util_info_print(WIFI_APPS, "Sent frame on %s len:%d ret val =%d\n", ifname, len, ret);
-
     return ret;
 }
 
@@ -446,7 +445,7 @@ static void send_multiap_broadcast_message(char *ifname)
 {
     unsigned char buff[MAX_BUFF_SZ];
     unsigned int sz;
-    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Interface: %s\n", __func__, __LINE__, ifname);
+    wifi_util_info_print(WIFI_APPS, "%s:%d ifname = %s\n", __func__, __LINE__, ifname);
 
     //wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_APPS, "%s:%d: ifname = %s\n", __func__, __LINE__, ifname);
@@ -550,15 +549,14 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
     multiap_service_type_t service_type = get_service_type();
     mac_address_from_name(interface_name, src_addr);
     wifi_mgr_t *g_wifi_mgr = (wifi_mgr_t *)get_wifimgr_obj();
-    uint8_mac_to_string_mac(src_addr, st);
-    wifi_util_info_print(WIFI_APPS, "string from mac_address_from_name %s =%s \n", interface_name,
-        st);
 
+    uint8_mac_to_string_mac(src_addr, st);
+    wifi_util_info_print(WIFI_APPS, "string from mac_address_from_name %s =%s\n", interface_name, st);
     uint8_mac_to_string_mac(dst, st);
-    wifi_util_info_print(WIFI_APPS, "string from mac_address_from_name of dest==%s \n", st);
+    wifi_util_info_print(WIFI_APPS, "string from mac_address_from_name of dest==%s\n", st);
+
     memcpy(tmp, (unsigned char *)dst, sizeof(mac_address_t));
     tmp += sizeof(mac_address_t);
-
     len += (int)(sizeof(mac_address_t));
 
     memcpy(tmp, (unsigned char *)src_addr, sizeof(mac_address_t));
@@ -635,7 +633,7 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
     tlv->type = multiap_tlv_type_ctrl_cap;
     tlv->len = htons(sizeof(multiap_ctrl_cap_t));
     memset(&ctrl_cap, 0, sizeof(multiap_ctrl_cap_t));
-    ;
+
     memcpy(tlv->value, &ctrl_cap, sizeof(multiap_ctrl_cap_t));
 
     tmp += (sizeof(multiap_tlv_t) + sizeof(multiap_ctrl_cap_t));
@@ -645,17 +643,17 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
     tlv = (multiap_tlv_t *)tmp;
     tlv->type = multiap_tlv_type_sta_mac_addr;
     for (itr = 0; itr < getNumberRadios(); itr++) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d index=%d and  getNumberRadios()=%d", __func__,
+        wifi_util_info_print(WIFI_APPS, "%s:%d index=%d and getNumberRadios()=%d\n", __func__,
             __LINE__, itr, getNumberRadios());
         get_sta_mac_address_for_radio(&g_wifi_mgr->hal_cap.wifi_prop, itr, mac);
         uint8_mac_to_string_mac(mac, st);
-        wifi_util_info_print(WIFI_APPS, "%s:%d pramod mac_adr= %s\n", __func__, __LINE__, st);
+        wifi_util_info_print(WIFI_APPS, "%s:%d mac_adr= %s\n", __func__, __LINE__, st);
         memcpy(&mac_buffer[offset], mac, MAC_ADDR_LEN);
         offset += MAC_ADDR_LEN;
     }
 
     tlv->len = htons(offset);
-    wifi_util_info_print(WIFI_APPS, "%s:%d pramod offset=%d\n", __func__, __LINE__, offset);
+    wifi_util_info_print(WIFI_APPS, "%s:%d offset=%d\n", __func__, __LINE__, offset);
     memcpy(tlv->value, (unsigned char *)mac_buffer, offset);
 
     tmp += (sizeof(multiap_tlv_t) + offset);
@@ -667,7 +665,7 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
 
     tmp += (sizeof(multiap_tlv_t));
     len += (int)(sizeof(multiap_tlv_t));
-    wifi_util_info_print(WIFI_APPS, "len = %d in fun=%s\n", len, __func__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d len = %d\n", __func__, __LINE__, len);
     return len;
 }
 
@@ -695,16 +693,18 @@ static void proto_process(unsigned char *data, unsigned int len)
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: XLE Extender - processing autoconfig search from gateway\n",
             __func__, __LINE__);
             if (state == multiap_state_none) {
-                wifi_util_info_print(WIFI_APPS, "%s:%d :Got a  packet of type =%d\n processing it",
+                wifi_util_info_print(WIFI_APPS, "%s:%d Got a Packet of type = %d. Processing it\n",
                     __func__, __LINE__, htons(cmdu->type));
                 ret = handle_autoconf_search(data, len);
                 if (ret == -1) {
                     wifi_util_info_print(WIFI_APPS,
-                        "autoconfig search response not sent hence setting the sate to none\n");
+                        "%s:%d Autoconfig search response not sent hence setting the State to none\n",
+                        __func__, __LINE__);
                     state = multiap_state_none;
                 } else {
                     wifi_util_info_print(WIFI_APPS,
-                        "autoconfig search response sent moving to extender mode\n");
+                        "%s:%d Autoconfig search response sent moving to extender mode\n",
+                        __func__, __LINE__);
                 }
             }
         } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
@@ -715,11 +715,11 @@ static void proto_process(unsigned char *data, unsigned int len)
         break;
     case multiap_msg_type_autoconf_resp:
         if (state == multiap_state_search_rsp_pending && ctrl->network_mode == rdk_dev_mode_type_gw) {
-            wifi_util_info_print(WIFI_APPS, "%s:%d :Got a valid packet of type =%d\n processing it",
+            wifi_util_info_print(WIFI_APPS, "%s:%d Got a valid packet of type =%d.Processing it\n",
                 __func__, __LINE__, htons(cmdu->type));
             state = multiap_state_completed;
             handle_autoconf_search_resp(data, len);
-            wifi_util_info_print(WIFI_APPS, "%s:%d :Bringing down the station", __func__, __LINE__);
+            wifi_util_info_print(WIFI_APPS, "%s:%d Bringing down the station\n", __func__, __LINE__);
             if (is_sta_enabled() == false) {
                 wifi_util_info_print(WIFI_APPS, "%s:%d stop mesh sta\n", __func__, __LINE__);
                 stop_extender_vaps();
@@ -728,7 +728,7 @@ static void proto_process(unsigned char *data, unsigned int len)
         }
         break;
     default:
-        wifi_util_info_print(WIFI_APPS, "Got different  package\n");
+        wifi_util_info_print(WIFI_APPS, "%s:%d Got different Packet\n", __func__, __LINE__);
         break;
     }
 }
@@ -772,10 +772,10 @@ static void *receive_multicast_message(void *ctx)
         wifi_util_info_print(WIFI_APPS, "%s:%d Waiting for data on %d sockets\n", __func__, __LINE__, socket_count);
         int ret = poll(poll_fds, socket_count, -1); // -1 = infinite timeout
         if (ret < 0) {
-            wifi_util_error_print(WIFI_APPS, "%s:%d: Poll error: %d\n", __func__, __LINE__, errno);
+            wifi_util_error_print(WIFI_APPS, "%s:%d Poll error: %d\n", __func__, __LINE__, errno);
             break;
         } else if (ret == 0) {
-            wifi_util_info_print(WIFI_APPS, "%s:%d poll timeout\n", __func__, __LINE__);
+            wifi_util_info_print(WIFI_APPS, "%s:%d Poll timeout\n", __func__, __LINE__);
             continue; // Timeout, continue waiting
         }
 
@@ -826,7 +826,6 @@ static int receive_multiap_message()
     } else {
         wifi_util_info_print(WIFI_APPS, "Recv thread created successfully\n");
     }
-
     return 0;
 }
 
@@ -838,7 +837,7 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
     unsigned int num_interfaces = sizeof(interfaces) / sizeof(interfaces[0]);
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     if (ctrl->multiap_sta_enabled == false) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d called when multiap disabled \n",
+        wifi_util_error_print(WIFI_APPS, "%s:%d called when multiap disabled\n",
             __func__, __LINE__);
         return RETURN_OK;
     }
@@ -857,11 +856,8 @@ static int multiap_timeout_fun(void* arg)
 
     if (state == multiap_state_search_rsp_pending) {
         static int count = 16;
-        wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: wifi_event_exec_timeout.\n",
-            __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: wifi_event_exec_timeout.\n",__func__, __LINE__);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
-#define MULTIAP_RESP_TIMEOUT (1000)
-         //scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, MULTIAP_RESP_TIMEOUT);
          // Stop the scheduler
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
         if (count <= 0){
@@ -875,11 +871,10 @@ static int multiap_timeout_fun(void* arg)
     } else if (state == multiap_state_sta_create_and_connect) {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Failed to connect/find GW device within timeout\n",
             __func__, __LINE__);
-        //state = multiap_state_search_rsp_pending;
         // Stop the scheduler
-        //scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
-        //apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
-        state = multiap_state_none;
+        scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
+        wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905 Stopping Multiap App.\n", __func__, __LINE__);
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
     } else {
         wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905:(UNHANDLED CASE)  Timeout on state : %d\n",
             __func__, __LINE__, state);
@@ -928,6 +923,7 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 {
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_info_print(WIFI_APPS, "%s:%d Inside\n", __func__, __LINE__);
     //Close global sockets
     for (int i = 0; i < socket_count; i++) {
         if (sockets[i] >= 0) {
@@ -939,8 +935,8 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
         }
     }
     socket_count = 0;
+    wifi_util_info_print(WIFI_APPS, "%s:%d test1\n", __func__, __LINE__);
     state = multiap_state_none;
-    pthread_cancel(tid);
     wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_sta_enabled=%d\n", __func__, __LINE__,ctrl->multiap_sta_enabled);
     //Stop station VAPs
     if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
@@ -951,7 +947,6 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     send_sock = -1;
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: Multiap application stopped\n", __func__, __LINE__);
-
     return RETURN_OK;
 }
 
@@ -1051,6 +1046,7 @@ static int event_exec_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
         break;
 
     case wifi_event_exec_stop:
+        wifi_util_info_print(WIFI_APPS, "%s:%d wifi_event_exec_stop\n", __func__, __LINE__);
         multiap_event_exec_stop(apps, arg);
         break;
 
