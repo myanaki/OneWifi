@@ -47,6 +47,7 @@
 #define FAILOVER_ENABLE "Device.X_RDK_GatewayManagement.Failover.Enable"
 #define MULTIAP_RESP_TIMEOUT (1000)
 #define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
+static int multiap_count = 100;
 
 static int create_autoconfig_search(unsigned char *buff, char *ifname);
 static int send_frame(unsigned char *buff, unsigned int len, bool multicast, char *ifname);
@@ -69,11 +70,11 @@ static int get_service_type()
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if (ctrl->network_mode == rdk_dev_mode_type_gw) {
-        wifi_util_info_print(WIFI_APPS, "Gateway mode  %s:%d\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_APPS, "Gateway mode %s:%d\n", __func__, __LINE__);
         return multiap_service_type_gateway;
     }
     else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
-        wifi_util_info_print(WIFI_APPS, "Extender mode  %s:%d\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_APPS, "Extender mode %s:%d\n", __func__, __LINE__);
         return multiap_service_type_extender;
     }
     else {
@@ -81,7 +82,6 @@ static int get_service_type()
         return multi_service_type_none;
     }
 }
-
 
 static int parse_multiap_tlv(unsigned char *buff, unsigned int len, multiap_tlv_type_t type,
     void *out_buff, size_t out_len)
@@ -715,16 +715,16 @@ static void proto_process(unsigned char *data, unsigned int len)
         break;
     case multiap_msg_type_autoconf_resp:
         if (state == multiap_state_search_rsp_pending && ctrl->network_mode == rdk_dev_mode_type_gw) {
-            wifi_util_info_print(WIFI_APPS, "%s:%d Got a valid packet of type =%d.Processing it\n",
+            wifi_util_info_print(WIFI_APPS, "%s:%d Got a valid packet of type =%d. Processing it\n",
                 __func__, __LINE__, htons(cmdu->type));
             state = multiap_state_completed;
             handle_autoconf_search_resp(data, len);
             wifi_util_info_print(WIFI_APPS, "%s:%d Bringing down the station\n", __func__, __LINE__);
-            if (is_sta_enabled() == false) {
-                wifi_util_info_print(WIFI_APPS, "%s:%d stop mesh sta\n", __func__, __LINE__);
-                stop_extender_vaps();
+            //if (is_sta_enabled() == false) {
+                wifi_util_info_print(WIFI_APPS, "%s:%d Stop Mesh sta\n", __func__, __LINE__);
+                apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
                 ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
-            }
+            //}
         }
         break;
     default:
@@ -855,17 +855,16 @@ static int multiap_timeout_fun(void* arg)
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if (state == multiap_state_search_rsp_pending) {
-        static int count = 16;
         wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: wifi_event_exec_timeout.\n",__func__, __LINE__);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
-         // Stop the scheduler
+        // Stop the scheduler
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
-        if (count <= 0){
-            count = 16;
+        if (multiap_count <= 0){
             wifi_util_info_print(WIFI_APPS, "%s:%d Max send count reached,Stopping Send.\n",__func__, __LINE__);
+            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
             return RETURN_OK;
         }
-        count--;
+        multiap_count--;
 		scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
 		NULL, MULTIAP_RESP_TIMEOUT, 0, FALSE);
     } else if (state == multiap_state_sta_create_and_connect) {
@@ -923,7 +922,28 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 {
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    vap_svc_t *mesh_ext_svc;
+    vap_svc_ext_t *ext;
+
     wifi_util_info_print(WIFI_APPS, "%s:%d Inside\n", __func__, __LINE__);
+    mesh_ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+
+    if (mesh_ext_svc != NULL) {
+        ext = &mesh_ext_svc->u.ext;
+
+        // Cancel connection algorithm timer
+        if (ext->ext_connect_algo_processor_id != 0) {
+            scheduler_cancel_timer_task(ctrl->sched, ext->ext_connect_algo_processor_id);
+            ext->ext_connect_algo_processor_id = 0;
+            wifi_util_info_print(WIFI_APPS, "%s:%d Canceled mesh extender connection timer\n", __func__, __LINE__);
+        }
+
+        cancel_scan_result_timer(ctrl, ext);
+        wifi_util_info_print(WIFI_APPS, "%s:%d change connection state: %d->3 (connection_state_disconnected_steady)\n",
+             __func__, __LINE__, ext->conn_state);
+        ext->conn_state = connection_state_disconnected_steady;
+    }
+
     //Close global sockets
     for (int i = 0; i < socket_count; i++) {
         if (sockets[i] >= 0) {
@@ -945,8 +965,9 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     }
     close(send_sock);
     send_sock = -1;
-
-    wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: Multiap application stopped\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d multiap_count=%d\n", __func__, __LINE__, multiap_count);
+    multiap_count = 0;
+    wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Multiap application stopped\n", __func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -1019,7 +1040,6 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
         NULL, 1000, 0, FALSE);
-		//scheduler_update_timer_task_interval(ctrl->sched, ctrl->multiap_timer_id, 1000);
         wifi_util_info_print(WIFI_CTRL, "%s:%d, Handling Evt: %s\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
         break;
@@ -1055,7 +1075,7 @@ static int event_exec_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
         break;
 
     default:
-        wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
+        wifi_util_error_print(WIFI_APPS, "%s:%d event not handle %s\r\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
         break;
     }
@@ -1116,6 +1136,7 @@ int multiap_deinit(wifi_app_t *app)
 int multiap_init(wifi_app_t *app, unsigned int create_flag)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
     if (app_init(app, create_flag) != 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d: Failed to register app!\n", __func__, __LINE__);
         return RETURN_ERR;
