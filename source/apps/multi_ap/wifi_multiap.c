@@ -858,14 +858,13 @@ static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 
     return RETURN_OK;
 }
-
 static int multiap_timeout_fun(void* arg)
 {
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if (state == multiap_state_search_rsp_pending) {
-        static int count = 16;
+        static int count = 100;
         wifi_util_info_print(WIFI_CTRL, "%s:%d IEEE1905: wifi_event_exec_timeout\n",
             __func__, __LINE__);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
@@ -873,8 +872,9 @@ static int multiap_timeout_fun(void* arg)
          // Stop the scheduler
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
         if (count <= 0){
-            count = 16;
+            count = 100;
             wifi_util_info_print(WIFI_APPS, "%s:%d Max send count reached,Stopping Send\n",__func__, __LINE__);
+            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
             return RETURN_OK;
         }
         count--;
