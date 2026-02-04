@@ -207,13 +207,15 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len)
 
     uint8_mac_to_string_mac(dst, st);
     wifi_util_info_print(WIFI_APPS, "%s:%d sender mac=%s\n", __func__, __LINE__, st);
+    wifi_util_info_print(WIFI_APPS, "%s:%d  NOT SENDING M2 MSG\n", __func__, __LINE__);
+#if 0
     for (int i = 0; i < MAX_IFACES; ++i) {
         len = create_autoconfig_resp_msg(msg, (unsigned char *)dst, ifaces[i]);
         wifi_util_error_print(WIFI_APPS, "After create_autoconfig_resp_msg got len = %s:%d :%d\n",
             __func__, __LINE__, len);
         send_frame(msg, len, false, ifaces[i]);
     }
-
+#endif
     wifi_util_info_print(WIFI_APPS, "autoconfig response is sent to Gateway\n");
     //set_to_extender_mode(&ctrl->handle, FAILOVER_ENABLE, 0, 0);
 
