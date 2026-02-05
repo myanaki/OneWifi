@@ -367,7 +367,6 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                 pthread_mutex_lock(&ctrl->queue_lock);
             }
         } else if (rc == ETIMEDOUT) {
-            wifi_util_info_print(WIFI_CTRL,"%s: IEEE1905.\n",__FUNCTION__);
             pthread_mutex_unlock(&ctrl->queue_lock);
             clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
 
@@ -1787,7 +1786,6 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     } else {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to start Wifi Monitor\n", __func__, __LINE__);
     }
-    wifi_util_error_print(WIFI_APPS,"%s:%d IEEE1905.\n", __func__, __LINE__);
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL);
 #endif
@@ -2279,12 +2277,6 @@ static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 {
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_analytics_event, NULL, (ANAYLYTICS_PERIOD * 1000), 0, FALSE);
-#endif
-
-#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
-    // Add multiap timer task - runs every 60 seconds for testing
-    //scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, run_multiap_event, NULL, 60000, 0, FALSE);
-    //wifi_util_info_print(WIFI_APPS, "%s:%d IEEE1905: Registered multiap timer task\n", __func__, __LINE__);
 #endif
 
 #ifdef ONEWIFI_CAC_APP_SUPPORT
