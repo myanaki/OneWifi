@@ -886,6 +886,7 @@ static int multiap_timeout_fun(void* arg)
 static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();  
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj(); 
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = {0};
 
@@ -903,17 +904,21 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
                                  __func__, __LINE__, vap_names[i]);  
             return RETURN_ERR;  
         }  
+    }
+    if (rfc_param == NULL) {  
+    wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to fetch Ctrl RFC\n", __func__, __LINE__);  
+    return RETURN_ERR;  
     }  
-
-    wifi_util_info_print(WIFI_APPS, "%s:%d Starting multiap event execution\n", __func__, __LINE__);
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d Ctrl is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
+    wifi_util_info_print(WIFI_APPS, "%s:%d Starting multiap event execution\n", __func__, __LINE__);
 
-    if (ctrl->rf_status_down || (ctrl->network_mode == rdk_dev_mode_type_ext)) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d Station not started: rf_status_down=%d, network_mode=%d (ext_mode=%d)\n",
-            __func__, __LINE__, ctrl->rf_status_down, ctrl->network_mode, rdk_dev_mode_type_ext);
+    if (ctrl->rf_status_down || (ctrl->network_mode == rdk_dev_mode_type_ext) 
+                             || !rfc_param->multiap_rfc) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Station not started: rf_status_down=%d, network_mode=%d (ext_mode=%d),multiap_rfc=%d\n",
+            __func__, __LINE__, ctrl->rf_status_down, ctrl->network_mode, rdk_dev_mode_type_ext,rfc_param->multiap_rfc);
         return RETURN_ERR;
     }
 
