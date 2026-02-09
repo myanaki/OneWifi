@@ -56,6 +56,11 @@ static int socket_count = 0;
 static int send_sock = -1;
 static pthread_t tid;
 static int multiap_count = 100;
+#if 0
+#define MP_IS_XLE is_device_type_xle()
+#else
+#define MP_IS_XLE true
+#endif
 
 static volatile multiap_state_t state = multiap_state_none;
 static char connected_interface[IFNAMSIZ] = {0};
@@ -65,7 +70,7 @@ static int create_autoconfig_search(unsigned char *buff, char *ifname);
 static int send_frame(unsigned char *buff, unsigned int len, bool multicast, char *ifname);
 static void send_multiap_broadcast_message(char *ifname);
 static int receive_multiap_message();
-static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *interface_name);
+//static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *interface_name);
 static int parse_multiap_tlv(unsigned char *buff, unsigned int len, multiap_tlv_type_t type,
     void *out_buff, size_t out_len);
 
@@ -163,9 +168,9 @@ static int parse_multiap_tlv(unsigned char *buff, unsigned int len, multiap_tlv_
 
 static int handle_autoconf_search(unsigned char *data, unsigned int len, char *recv_interface)
 {
-    unsigned char msg[MAX_BUFF_SZ];
+    //unsigned char msg[MAX_BUFF_SZ];
     mac_address_t dst;
-    wifi_ctrl_t *ctrl = NULL;
+    //wifi_ctrl_t *ctrl = NULL;
     char st[64];
     unsigned char buff[128] = { 0 };
     multiap_supported_srv_t *srv = (multiap_supported_srv_t *)buff;
@@ -189,7 +194,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
     }
 
     state = multiap_state_completed;
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    //ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     /* Extract AL MAC address */
     if (parse_multiap_tlv(data, len, multiap_tlv_type_al_mac_address, &dst, sizeof(mac_address_t)) < 0) {
@@ -199,7 +204,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
 
     uint8_mac_to_string_mac(dst, st);
     wifi_util_info_print(WIFI_APPS, "%s:%d Sender mac=%s\n", __func__, __LINE__, st);
-
+#if 0
    /* Send response on the interface where packet was received */
     if (recv_interface != NULL && strlen(recv_interface) > 0) {
         len = create_autoconfig_resp_msg(msg, (unsigned char *)dst, recv_interface);
@@ -215,6 +220,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
 
     wifi_util_info_print(WIFI_APPS, "%s:%d Split brain detected - Device switched to extender mode\n",
         __func__, __LINE__);
+#endif
     return RETURN_OK;
 }
 
@@ -533,7 +539,7 @@ static int create_raw_socket(const char *iface_name)
 
     return sockfd;
 }
-
+#if 0
 static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *interface_name)
 {
     unsigned short msg_id = multiap_msg_type_autoconf_resp;
@@ -676,7 +682,7 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
          __func__, __LINE__, len);
     return len;
 }
-
+#endif
 static void proto_process(unsigned char *data, unsigned int len, char *recv_interface)
 {
     wifi_ctrl_t *ctrl;
@@ -698,7 +704,7 @@ static void proto_process(unsigned char *data, unsigned int len, char *recv_inte
 
     switch (htons(cmdu->type)) {
     case multiap_msg_type_autoconf_search:
-        if (is_device_type_xle()) {
+        if (MP_IS_XLE) {
             wifi_util_info_print(WIFI_APPS, "%s:%d Got a packet of type =%d\n processing it",
                 __func__, __LINE__, htons(cmdu->type));
             ret = handle_autoconf_search(data, len, recv_interface);
@@ -907,7 +913,7 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
 
     /* Start the station vaps only if none of the station is connected to vaps because in XLE when
     its in GW mode(with WAN failover) stations are connected to the GW then we should not start the station vaps */
-    if (!is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
+    if (!MP_IS_XLE && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
         start_station_vaps(true, true);
         state = multiap_state_sta_create_and_connect;
         scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
