@@ -2468,6 +2468,29 @@ void process_csi_analytics_rfc(bool type)
     return;
 }
 
+void process_multiap_rfc(bool type)
+{
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
+        return;
+    }
+    rfc_param->multiap_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
+    rfc_param->multiap_rfc);
+    if(rfc_param->multiap_rfc) {
+        wifi_util_error_print(WIFI_CTRL, "multiap_rfc  RFC is enabled %s:%d\n", __func__, __LINE__);
+        ctrl->multiap_sta_enabled = true;
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "multiap_rfc  RFC is disabled %s:%d\n", __func__, __LINE__);
+        ctrl->multiap_sta_enabled = false;
+	}
+    return;
+}
+
 void process_tcm_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
@@ -3651,6 +3674,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_csi_analytics_rfc:
         process_csi_analytics_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_multiap_rfc:
+        process_multiap_rfc(*(bool *)data);
         break;
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:
