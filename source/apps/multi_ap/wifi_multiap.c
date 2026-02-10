@@ -59,6 +59,7 @@ static int multiap_count = 100;
 
 static volatile multiap_state_t state = multiap_state_none;
 static char connected_interface[IFNAMSIZ] = {0};
+static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Function declarations/prototypes */
 static int create_autoconfig_search(unsigned char *buff, char *ifname);
@@ -853,8 +854,13 @@ static int multiap_timeout_fun(void* arg)
 {
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    multiap_state_t current_state;
 
-    if (state == multiap_state_search_rsp_pending) {
+    pthread_mutex_lock(&state_mutex);
+    current_state = state;
+    pthread_mutex_unlock(&state_mutex);
+
+    if (current_state == multiap_state_search_rsp_pending) {
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
         /* Stop the scheduler */
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
@@ -969,7 +975,9 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     }
     socket_count = 0;
     multiap_count = 0;
+    pthread_mutex_lock(&state_mutex);
     state = multiap_state_none;
+    pthread_mutex_unlock(&state_mutex);
     //Stop station VAPs
     if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
         ctrl->multiap_sta_enabled = false;
@@ -1130,24 +1138,39 @@ int multiap_deinit(wifi_app_t *app)
     close(send_sock);
     send_sock = -1;
 
+    pthread_mutex_lock(&state_mutex);
     state = multiap_state_none;
+    pthread_mutex_unlock(&state_mutex);
     /* Stop station VAPs */
     if (ctrl != NULL) {
         ctrl->multiap_sta_enabled = false;
         start_station_vaps(true, false);
     }
+    /* Destroy state mutex */
+    pthread_mutex_destroy(&state_mutex);
     wifi_util_info_print(WIFI_APPS, "%s:%d Multiap app deinitialized\n", __func__, __LINE__);
     return RETURN_OK;
 }
 
 int multiap_init(wifi_app_t *app, unsigned int create_flag)
 {
-    //TODO: build a mutex to protect state variable
-    if (app_init(app, create_flag) != 0) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to register app!\n", __func__, __LINE__);
+    int ret;
+
+    /* Initialize state mutex */
+    ret = pthread_mutex_init(&state_mutex, NULL);
+    if (ret != 0) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to initialize state mutex: %d\n",
+            __func__, __LINE__, ret);
         return RETURN_ERR;
     }
+    if (app_init(app, create_flag) != 0) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to register app!\n", __func__, __LINE__);
+        pthread_mutex_destroy(&state_mutex);
+        return RETURN_ERR;
+    }
+    pthread_mutex_lock(&state_mutex);
     state = multiap_state_none;
+    pthread_mutex_unlock(&state_mutex);
     wifi_util_info_print(WIFI_APPS, "%s:%d Init multiap_app\n", __func__, __LINE__);
 
     return RETURN_OK;
