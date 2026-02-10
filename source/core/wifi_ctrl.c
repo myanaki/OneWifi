@@ -1793,10 +1793,9 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 #ifdef ONEWIFI_CAC_APP_SUPPORT
     apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 #endif
-#if 0
+
 #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
-    //apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
-#endif
+    apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 #endif
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
@@ -2723,6 +2722,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
     g_wifi_mgr->ctrl.rfc_params.csi_analytics_enabled_rfc =
         g_wifi_mgr->rfc_dml_parameters.csi_analytics_enabled_rfc;
+    g_wifi_mgr->ctrl.rfc_params.multiap_rfc =
+        g_wifi_mgr->rfc_dml_parameters.multiap_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
@@ -2786,7 +2787,7 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
     unsigned int index, i;
 
     index = get_sta_vap_index_for_radio(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, radio_index);
-    wifi_util_info_print(WIFI_CTRL,"%s:%d: vap index : %d for radio_index: %d\n",__func__, __LINE__, index,radio_index);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d: index : %d for radio_index: %d\n",__func__, __LINE__, index,radio_index);
 
     radio = find_radio_config_by_index(radio_index);
     if (radio == NULL) {

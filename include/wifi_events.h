@@ -165,6 +165,7 @@ typedef enum {
     wifi_event_type_sta_client_info,
     wifi_event_type_start_sta_channel_scan,
     wifi_event_type_csi_analytics_rfc,
+    wifi_event_type_multiap_rfc,
     wifi_event_type_sm_app_enable,
     wifi_event_command_max,
 
