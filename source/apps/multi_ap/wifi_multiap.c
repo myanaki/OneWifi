@@ -724,11 +724,8 @@ static void proto_process(unsigned char *data, unsigned int len, char *recv_inte
             handle_autoconf_search_resp(data, len);
             wifi_util_info_print(WIFI_APPS, "%s:%d Autoconfig response received, bringing down the station\n",
                 __func__, __LINE__);
-            if (is_sta_enabled() == false) {
-                wifi_util_info_print(WIFI_APPS, "%s:%d Stop Mesh sta\n", __func__, __LINE__);
-                apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
-            }
+            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+            ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
         }
         break;
     default:
@@ -919,6 +916,7 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         close(send_sock);
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
             __func__, __LINE__);
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
         return RETURN_ERR;
         }
     }
@@ -933,10 +931,14 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
     vap_svc_t *mesh_ext_svc;
     vap_svc_ext_t *ext;
 
+    if (ctrl != NULL && ctrl->multiap_sta_enabled == false) {
+        wifi_util_info_print(WIFI_APPS, "%s:%d Multi-AP already disabled, returning\n",
+            __func__, __LINE__);
+        return RETURN_OK;
+    }
     mesh_ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
     if (mesh_ext_svc != NULL) {
         ext = &mesh_ext_svc->u.ext;
-
         /* Cancel connection algorithm timer */
         if (ext->ext_connect_algo_processor_id != 0) {
             scheduler_cancel_timer_task(ctrl->sched, ext->ext_connect_algo_processor_id);
@@ -947,6 +949,12 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
         wifi_util_info_print(WIFI_APPS, "%s:%d Setting connection state to disconnected_steady\n",
              __func__, __LINE__);
         ext->conn_state = connection_state_disconnected_steady;
+    }
+
+    if (ctrl != NULL && ctrl->multiap_timer_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
+        ctrl->multiap_timer_id = 0;
+        wifi_util_info_print(WIFI_APPS, "%s:%d Canceled Multi-AP timer\n", __func__, __LINE__);
     }
     memset(connected_interface, 0, sizeof(connected_interface));
     /* Close global sockets */
@@ -1134,6 +1142,7 @@ int multiap_deinit(wifi_app_t *app)
 
 int multiap_init(wifi_app_t *app, unsigned int create_flag)
 {
+    //TODO: build a mutex to protect state variable
     if (app_init(app, create_flag) != 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to register app!\n", __func__, __LINE__);
         return RETURN_ERR;
