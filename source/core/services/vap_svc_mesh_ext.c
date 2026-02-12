@@ -35,6 +35,7 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_base.h"
 #include "wifi_stubs.h"
+#include "wifi_multiap.h"
 
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
@@ -623,6 +624,14 @@ void ext_start_scan(vap_svc_t *svc)
         }
 
         radio_oper_param = get_wifidb_radio_map(radio_index);
+        //Skip 6GHz Scan
+        if (ctrl->multiap_sta_enabled) {
+            if (radio_oper_param->band == WIFI_FREQUENCY_6_BAND) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d Skipping scan on 6GHz radio index: %d\n",
+                    __func__, __LINE__, radio_index);
+                continue;
+            }
+        }
         if (get_allowed_channels(radio_oper_param->band, &mgr->hal_cap.wifi_prop.radiocap[radio_index],
                 channels_list, &num_channels,
                 radio_oper_param->DfsEnabled) != RETURN_OK) {
@@ -912,7 +921,7 @@ void ext_try_connecting(vap_svc_t *svc)
                 __func__, __LINE__);
             scheduler_cancel_timer_task(ctrl->sched, ext->ext_conn_status_ind_timeout_handler_id);
         }
-        if (ctrl->rf_status_down == false) {
+        if (!(ctrl->rf_status_down) && !(ctrl->multiap_sta_enabled)) {
             scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_conn_status_ind_timeout_handler_id,
                 process_ext_connect_event_timeout, svc, EXT_CONN_STATUS_IND_TIMEOUT, 1, FALSE);
         } else {
@@ -1266,7 +1275,7 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
         update_vap_hal_prop_bridge_name(svc, tgt_vap_map);
         wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d Ignite-Enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, map->vap_array[i].u.sta_info.ignite_enabled);
         publish_endpoint_enable();
-        if (ctrl->rf_status_down == true) {
+        if ((ctrl->rf_status_down) || (ctrl->multiap_sta_enabled)) {
             ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
                  __LINE__);
             wifi_util_info_print(WIFI_CTRL, "%s:%d sta is enabled starting the station vaps\n", __FUNCTION__, __LINE__);
@@ -1798,7 +1807,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 ext->ext_trigger_disconnection_timeout_handler_id = 0;
             }
 
-            if (ctrl->network_mode != rdk_dev_mode_type_em_node) {
+            if (ctrl->network_mode != rdk_dev_mode_type_em_node && !(ctrl->multiap_sta_enabled)) {
                 scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_ip_check_id,
                     process_udhcp_ip_check, svc, EXT_UDHCP_IP_CHECK_INTERVAL,
                     EXT_UDHCP_IP_CHECK_NUM + 1, FALSE);

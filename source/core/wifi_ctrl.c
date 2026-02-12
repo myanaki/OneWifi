@@ -251,8 +251,8 @@ void selfheal_event_publish(wifi_ctrl_t *ctrl)
 
 void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
 {
-    if (ctrl->rf_status_down == true) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Sta selfheal mode deactivated due to Ignite mode\n",
+    if (ctrl->rf_status_down == true || ctrl->multiap_sta_enabled == true) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Sta selfheal mode disabled\n",
             __func__, __LINE__);
         return;
     }
@@ -296,7 +296,7 @@ bool is_sta_enabled(void)
        __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check,  ctrl->rf_status_down);
    return ((ctrl->network_mode == rdk_dev_mode_type_ext ||
               ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->active_gw_check == true || 
-              ctrl->rf_status_down == true ) &&  ctrl->eth_bh_status == false);
+              ctrl->rf_status_down == true  || ctrl->multiap_sta_enabled == true) &&  ctrl->eth_bh_status == false);
 }
 
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
@@ -1834,13 +1834,13 @@ int validate_and_sync_private_vap_credentials()
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     int monitor_ret = 0;
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
 
     monitor_ret = init_wifi_monitor();
 
     start_wifi_services();
 
     init_wireless_interface_mac();
-
 
     ctrl->webconfig_state = ctrl_webconfig_state_vap_all_cfg_rsp_pending;
     telemetry_bootup_time_wifibroadcast(); //Telemetry Marker for btime_wifibcast_split
@@ -1866,6 +1866,10 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 #ifdef ONEWIFI_CAC_APP_SUPPORT
     apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 #endif
+
+    if(rfc_param->multiap_rfc) {
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+    }
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
     ctrl->webconfig_state = ctrl_webconfig_state_associated_clients_full_cfg_rsp_pending;
@@ -2811,6 +2815,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
     g_wifi_mgr->ctrl.rfc_params.csi_analytics_enabled_rfc =
         g_wifi_mgr->rfc_dml_parameters.csi_analytics_enabled_rfc;
+    g_wifi_mgr->ctrl.rfc_params.multiap_rfc =
+        g_wifi_mgr->rfc_dml_parameters.multiap_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }

@@ -166,6 +166,13 @@ OneWifi_SOURCES += $(top_srcdir)/source/apps/cac/wifi_cac.c
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/cac/
 endif
 
+# Always expose Multiap header
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+
+if ONEWIFI_MULTIAP_APP_SUPPORT
+OneWifi_SOURCES += $(top_srcdir)/source/apps/multi_ap/wifi_multiap.c
+endif
+
 if USE_DML_SOURCES
 if ONEWIFI_DML_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/dml/wifi_ssp/ssp_main.c $(top_srcdir)/source/dml/wifi_ssp/ssp_loop.c $(top_srcdir)/source/dml/wifi_ssp/ssp_messagebus_interface.c $(top_srcdir)/source/dml/wifi_ssp/ssp_action.c $(top_srcdir)/source/dml/wifi_ssp/dm_pack_datamodel.c  $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_without_seshat.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_with_seshat.c  $(top_srcdir)/source/dml/tr_181/sbapi/cosa_dbus_api.c

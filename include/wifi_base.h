@@ -166,7 +166,8 @@ typedef enum {
     wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
     wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
     wifi_app_inst_csi_analytics = wifi_app_inst_base << 19,
-    wifi_app_inst_max = wifi_app_inst_base << 20
+    wifi_app_inst_multiap = wifi_app_inst_base << 20,
+    wifi_app_inst_max = wifi_app_inst_base << 21
 } wifi_app_inst_t;
 
 typedef struct {
@@ -490,6 +491,7 @@ typedef struct {
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
+    bool multiap_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
