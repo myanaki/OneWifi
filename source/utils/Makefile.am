@@ -63,6 +63,10 @@ else
 libwifi_utils_la_CPPFLAGS += -I$(top_srcdir)/source/platform/rdkb $(CPPFLAGS)
 endif
 
+if ONEWIFI_MULTIAP_APP_SUPPORT
+ libwifi_utils_la_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+endif
+
 libwifi_utils_la_CFLAGS =  $(SYSTEMD_CFLAGS)
 libwifi_utils_la_CFLAGS += $(DML_ENABLE_FLAG)
 libwifi_utils_la_SOURCES = wifi_validator.c
