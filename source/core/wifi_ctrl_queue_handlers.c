@@ -2727,6 +2727,30 @@ void process_csi_analytics_rfc(bool type)
     return;
 }
 
+void process_multiap_rfc(bool type)
+{
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to fetch Ctrl RFC\n", __func__, __LINE__);
+        return;
+    }
+    rfc_param->multiap_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    if(rfc_param->multiap_rfc) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_rfc RFC is Enabled & Starting station vaps\n", __func__, __LINE__);
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_rfc RFC is Disabled\n", __func__, __LINE__);
+        if(ctrl->multiap_sta_enabled) {
+            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+        }
+	}
+
+    return;
+}
+
 void process_tcm_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
@@ -2890,6 +2914,11 @@ void process_device_mode_command_event(int device_mode)
         update_wifi_global_config(global_param);
         update_wifi_vap_config(device_mode);
         if (device_mode == rdk_dev_mode_type_ext) {
+            if (ctrl->multiap_sta_enabled) {
+                // Stop the station when its in extender mode
+                apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+            }
+
             if (is_sta_enabled() == true) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
                 start_extender_vaps(WIFI_ALL_RADIO_INDICES);
@@ -2897,6 +2926,12 @@ void process_device_mode_command_event(int device_mode)
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta disabled\n", __func__, __LINE__);
             }
         } else if (device_mode == rdk_dev_mode_type_gw) {
+            // This has not been tested we have to test this in XLE mode 
+            // check when the XLE goes in GW mode and WANFAILOVER mode then will the stations be connected to GW or not
+            //Based on this we have to take the action
+            ctrl->multiap_sta_enabled = true;
+            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+
             if (is_sta_enabled() == false) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
                 stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
@@ -3941,6 +3976,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_csi_analytics_rfc:
         process_csi_analytics_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_multiap_rfc:
+        process_multiap_rfc(*(bool *)data);
         break;
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:
