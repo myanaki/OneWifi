@@ -1834,9 +1834,7 @@ int validate_and_sync_private_vap_credentials()
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     int monitor_ret = 0;
-    #ifdef ONEWIFI_MULTIAP_APP_SUPPORT
-        wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
-    #endif
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
 
     monitor_ret = init_wifi_monitor();
 
@@ -1869,11 +1867,9 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 #endif
 
-#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
     if(rfc_param->multiap_rfc) {
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     }
-#endif
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
     ctrl->webconfig_state = ctrl_webconfig_state_associated_clients_full_cfg_rsp_pending;

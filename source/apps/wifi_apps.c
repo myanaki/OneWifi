@@ -26,10 +26,7 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "wifi_apps_mgr.h"
-
-#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
 #include "wifi_multiap.h"
-#endif
 
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
 extern int analytics_init(wifi_app_t *app, unsigned int create_flag);

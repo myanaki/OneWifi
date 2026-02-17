@@ -2903,6 +2903,7 @@ void process_device_mode_command_event(int device_mode)
 {
     wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d: device mode changed: %d\n", __func__, __LINE__,
         device_mode);
@@ -2926,12 +2927,13 @@ void process_device_mode_command_event(int device_mode)
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta disabled\n", __func__, __LINE__);
             }
         } else if (device_mode == rdk_dev_mode_type_gw) {
-            // This has not been tested we have to test this in XLE mode 
-            // check when the XLE goes in GW mode and WANFAILOVER mode then will the stations be connected to GW or not
-            //Based on this we have to take the action
-            ctrl->multiap_sta_enabled = true;
-            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
-
+            /* This has not been tested we have to test this in XLE mode
+               check when the XLE goes in GW mode and WANFAILOVER mode then will the stations be connected to GW or not
+               Based on this we have to take the action */
+            if (rfc_param->multiap_rfc && is_device_type_xle()) {
+                ctrl->multiap_sta_enabled = true;
+                apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+            }
             if (is_sta_enabled() == false) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
                 stop_extender_vaps(WIFI_ALL_RADIO_INDICES);

@@ -268,10 +268,8 @@ typedef struct wifi_ctrl {
     events_bus_data_t   events_bus_data;
     hotspot_cfg_sem_param_t hotspot_sem_param;
     bool                rf_status_down;
-#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
     bool                multiap_sta_enabled;
     int                 multiap_timer_id;
-#endif
 } wifi_ctrl_t;
 
 typedef struct {
