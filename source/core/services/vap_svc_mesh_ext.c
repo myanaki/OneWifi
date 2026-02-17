@@ -35,10 +35,8 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_base.h"
 #include "wifi_stubs.h"
-
-#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
 #include "wifi_multiap.h"
-#endif
+
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
 
@@ -626,14 +624,14 @@ void ext_start_scan(vap_svc_t *svc)
         }
 
         radio_oper_param = get_wifidb_radio_map(radio_index);
-#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
-        //skip radio 6GHz
-        if (radio_oper_param->band == WIFI_FREQUENCY_6_BAND) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d Skipping scan on 6GHz radio index: %d\n",
-                __func__, __LINE__, radio_index);
-            continue;
+        //skip radio 6GHz Scan
+        if (ctrl->multiap_sta_enabled) {
+            if (radio_oper_param->band == WIFI_FREQUENCY_6_BAND) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d Skipping scan on 6GHz radio index: %d\n",
+                    __func__, __LINE__, radio_index);
+                continue;
+            }
         }
-#endif
         if (get_allowed_channels(radio_oper_param->band, &mgr->hal_cap.wifi_prop.radiocap[radio_index],
                 channels_list, &num_channels,
                 radio_oper_param->DfsEnabled) != RETURN_OK) {

@@ -54,10 +54,7 @@ extern "C" {
 #ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
 #include "wifi_easyconnect.h"
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
-
-#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
 #include "wifi_multiap.h"
-#endif
 
 #define MAX_APP_INIT_DATA 1024
 #define APP_DETACHED 0x01
