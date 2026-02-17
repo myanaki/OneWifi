@@ -230,9 +230,10 @@ int apps_mgr_cac_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_e
     return RETURN_OK;
 }
 #endif
-#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
+
 int apps_mgr_multiap_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_event_subtype_t sub_type, void *arg, int len)
 {
+#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
     wifi_app_t  *app = NULL;
     wifi_event_t *event;
 
@@ -254,10 +255,10 @@ int apps_mgr_multiap_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wi
     app = get_app_by_inst(apps_mgr, wifi_app_inst_multiap);
     app->desc.event_fn(app, event);
     destroy_wifi_event(event);
+#endif
 
     return RETURN_OK;
 }
-#endif
 
 int app_deinit(wifi_app_t *app, unsigned int create_flag)
 {

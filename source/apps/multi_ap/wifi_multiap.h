@@ -24,9 +24,7 @@
 extern "C" {
 #endif
 #define MAX_BUFF_SZ 1024
-#define ETH_P_1905 0x893a
 #define CTRL_CAP_SZ 8
-#define MAX_IFACES 8
 
 typedef struct {
     void *data;

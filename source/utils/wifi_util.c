@@ -4734,7 +4734,7 @@ int mac_address_from_name(const char *ifname, mac_address_t mac)
     return 0;
 }
 
-int get_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac)
+int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac)
 {
     int index;
     int num_vaps;
