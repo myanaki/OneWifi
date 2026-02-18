@@ -487,7 +487,7 @@ int process_udhcp_ip_check(vap_svc_t *svc)
     ext = &svc->u.ext;
     
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status value : %d\n", __func__, __LINE__, ctrl->rf_status_down);
-    if (!(ctrl->rf_status_down)) {
+    if (ctrl->rf_status_down == false) {
         memset(value, '\0', sizeof(value));
         memset(value, '\0', sizeof(file_name));
         memset(command, '\0', sizeof(command));

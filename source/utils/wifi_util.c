@@ -4746,9 +4746,9 @@ int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsi
     for (index = 0; index < num_vaps; ++index) {
         if (if_prop->rdk_radio_index == radio_index) {
             if (!strncmp(if_prop->vap_name, "mesh_sta", strlen("mesh_sta"))) {
-               mac_address_from_name(if_prop->interface_name,mac);
-               uint8_mac_to_string_mac(mac,st);
-               wifi_util_info_print(WIFI_CTRL, "%s:%d interface_name= %s and mac address= %s\n",
+               mac_address_from_name(if_prop->interface_name, mac);
+               uint8_mac_to_string_mac(mac, st);
+               wifi_util_info_print(WIFI_CTRL, "%s:%d interface_name=%s and mac address=%s\n",
                    __func__, __LINE__, if_prop->interface_name, st);
                 break;
             }

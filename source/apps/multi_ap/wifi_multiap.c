@@ -42,10 +42,11 @@
 #include "wifi_stubs.h"
 #include "wifi_util.h"
 #include "scheduler.h"
+#include "const.h"
 
 /* MACROS */
 #define FAILOVER_ENABLE "Device.X_RDK_GatewayManagement.Failover.Enable"
-
+#define MAX_BUFF_SZ 1024
 #define MAX_IFACES 8
 #define ETH_P_1905 0x893a
 
@@ -65,7 +66,7 @@ static int search_req_count = 0;
 
 static volatile multiap_state_t state = multiap_state_none;
 static char connected_interface[IFNAMSIZ] = {0};
-static pthread_mutex_t state_mutex;
+static pthread_mutex_t multiap_mutex;
 
 /* Function declarations/prototypes */
 static int create_autoconfig_search(unsigned char *buff, char *ifname);
@@ -697,7 +698,7 @@ static void proto_process(unsigned char *data, unsigned int len, char *recv_inte
 
     switch (htons(cmdu->type)) {
     case multiap_msg_type_autoconf_search:
-        if (state == multiap_state_none) {
+        if (state == multiap_state_respond_to_search) {
             wifi_util_info_print(WIFI_APPS, "%s:%d Got a packet of type =%d, processing it\n",
                 __func__, __LINE__, htons(cmdu->type));
             ret = handle_autoconf_search(data, len, recv_interface);
@@ -735,14 +736,15 @@ static void proto_process(unsigned char *data, unsigned int len, char *recv_inte
 
 static void *receive_multicast_message(void *ctx)
 {
+    prctl(PR_SET_NAME, __func__, 0, 0, 0);
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    const char *ifaces[MAX_IFACES] = { "wl1", "wl1.1", "wl0", "wl0.1", "brlan0", "wl1.7", "wl0.7" , "brlan1" };
+    const char *ifaces[] = { "wl1", "wl1.1", "wl0", "wl0.1", "brlan0", "wl1.7", "wl0.7" , "brlan1" };
     char buffer[MAX_FRAME_SZ];
 
-    struct pollfd poll_fds[MAX_IFACES];
+    struct pollfd poll_fds[ARRAY_SIZE(ifaces)];
 
     for (int i = 0; i < rx_sock_count; i++) {
         if (rx_socks[i] >= 0) {
@@ -753,7 +755,7 @@ static void *receive_multicast_message(void *ctx)
     }
     rx_sock_count = 0;
     wifi_util_info_print(WIFI_APPS, "%s:%d Initializing sockets on interfaces\n", __func__, __LINE__);
-    for (int i = 0; i < MAX_IFACES; ++i) {
+    for (unsigned int i = 0; i < ARRAY_SIZE(ifaces); ++i) {
         rx_socks[i] = create_raw_socket(ifaces[i]);
         if (rx_socks[i] < 0) {
             wifi_util_info_print(WIFI_APPS, "Failed to initialize socket on %s\n", ifaces[i]);
@@ -790,9 +792,9 @@ static void *receive_multicast_message(void *ctx)
                 wifi_util_info_print(WIFI_APPS, "%s:%d Received %zd bytes on socket: %d(%s)\n",
                     __func__, __LINE__, len, rx_socks[i], ifaces[i]);
                 if (len > 0) {
-                    pthread_mutex_lock(&state_mutex);
+                    pthread_mutex_lock(&multiap_mutex);
                     proto_process((unsigned char *)buffer, len, (char *)ifaces[i]);
-                    pthread_mutex_unlock(&state_mutex);
+                    pthread_mutex_unlock(&multiap_mutex);
                 }
             }
             /* Check for socket errors */
@@ -836,13 +838,6 @@ static int receive_multiap_message()
 
 static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
-    if (ctrl->multiap_sta_enabled == false) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d Called when multiap disabled\n",
-            __func__, __LINE__);
-        return RETURN_OK;
-    }
     if (strlen(connected_interface) > 0) {
         wifi_util_info_print(WIFI_APPS, "%s:%d Sending broadcast on connected interface: %s\n",
             __func__, __LINE__, connected_interface);
@@ -857,16 +852,16 @@ static int multiap_timeout_fun(void* arg)
     wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    pthread_mutex_lock(&state_mutex);
+    pthread_mutex_lock(&multiap_mutex);
 
     if (state == multiap_state_search_rsp_pending) {
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
         /* Stop the scheduler */
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
-        if (search_req_count >= MAX_SEARCH_REQ_PKTS){
+        if (search_req_count == MAX_SEARCH_REQ_PKTS){
             wifi_util_info_print(WIFI_APPS, "%s:%d Max send count reached,Stopping Send\n", __func__, __LINE__);
             apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
-            pthread_mutex_unlock(&state_mutex);
+            pthread_mutex_unlock(&multiap_mutex);
             return RETURN_OK;
         }
         search_req_count++;
@@ -883,7 +878,7 @@ static int multiap_timeout_fun(void* arg)
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
     }
 
-    pthread_mutex_unlock(&state_mutex);
+    pthread_mutex_unlock(&multiap_mutex);
 
     return RETURN_OK;
 }
@@ -905,13 +900,12 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         return RETURN_ERR;
     }
 
-    pthread_mutex_lock(&state_mutex);
     send_sock = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW);
     if (send_sock < 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a send socket\n", __func__, __LINE__);
-        pthread_mutex_unlock(&state_mutex);
         return RETURN_ERR;
     }
+    ctrl->multiap_sta_enabled = true;
 
     /* Start the station vaps only if none of the station is connected to vaps because in XLE when
     its in GW mode(with WAN failover) stations are connected to the GW then we should not start the station vaps */
@@ -921,10 +915,10 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
 		NULL, MULTIAP_CONNECT_TIMEOUT, 0, FALSE);
         wifi_util_info_print(WIFI_APPS, "%s:%d Registered multiap timer task\n", __func__, __LINE__);
-    } else if (is_device_type_xle() && !(ctrl->network_mode == rdk_dev_mode_type_ext)) {
+    } else if (is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
+        state = multiap_state_respond_to_search;
         wifi_util_info_print(WIFI_APPS, "%s:%d Creating Rx thread\n", __func__, __LINE__);
         if (receive_multiap_message() != 0) {
-            pthread_mutex_unlock(&state_mutex);
             close(send_sock);
             wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
                 __func__, __LINE__);
@@ -932,12 +926,10 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
             return RETURN_ERR;
         }
     } else {
-        pthread_mutex_unlock(&state_mutex);
         wifi_util_info_print(WIFI_APPS, "%s:%d XLE Device is in Extender Mode\n", __func__, __LINE__);
+        ctrl->multiap_sta_enabled = false;
         return RETURN_ERR;
     }
-
-    pthread_mutex_unlock(&state_mutex);
 
     return RETURN_OK;
 }
@@ -955,7 +947,6 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
         return RETURN_OK;
     }
 
-    pthread_mutex_lock(&state_mutex);
     mesh_ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
     if (mesh_ext_svc != NULL) {
         ext = &mesh_ext_svc->u.ext;
@@ -996,13 +987,9 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 
     state = multiap_state_none;
 
-    pthread_mutex_unlock(&state_mutex);
-
     //Stop station VAPs
-    if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
-        ctrl->multiap_sta_enabled = false;
-        start_station_vaps(true, false);
-    }
+    ctrl->multiap_sta_enabled = false;
+    start_station_vaps(true, false);
 
     wifi_util_info_print(WIFI_APPS, "%s:%d Multiap application stopped\n", __func__, __LINE__);
 
@@ -1069,43 +1056,64 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
         return RETURN_OK;
     }
 
+    pthread_mutex_lock(&multiap_mutex);
     switch (sub_type) {
     case wifi_event_hal_sta_conn_status:
         wifi_util_info_print(WIFI_APPS, "%s:%d Handling Evt: %s\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
         multiap_event_hal_sta_conn_status(apps, arg);
         break;
+
     default:
         wifi_util_error_print(WIFI_APPS, "%s:%d Event not handle %s\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
         break;
     }
+    pthread_mutex_unlock(&multiap_mutex);
 
     return RETURN_OK;
 }
 
 static int event_exec_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    int ret = RETURN_OK;
+
+    pthread_mutex_lock(&multiap_mutex);
     switch (sub_type) {
     case wifi_event_exec_start:
+        if (ctrl->multiap_sta_enabled == true) {
+            wifi_util_info_print(WIFI_APPS, "%s:%d Multiap already enabled\n", __func__, __LINE__);
+            ret = RETURN_ERR;
+            break;
+        }
         multiap_event_exec_start(apps, arg);
         break;
 
     case wifi_event_exec_stop:
+        if (ctrl->multiap_sta_enabled == false) {
+            wifi_util_info_print(WIFI_APPS, "%s:%d Multiap already disabled\n", __func__, __LINE__);
+            ret = RETURN_ERR;
+            break;
+        }
         multiap_event_exec_stop(apps, arg);
         break;
 
     case wifi_event_exec_timeout:
-        multiap_event_exec_timeout(apps, arg);
+        if (ctrl->multiap_sta_enabled == true) {
+            multiap_event_exec_timeout(apps, arg);
+        }
         break;
 
     default:
         wifi_util_error_print(WIFI_APPS, "%s:%d Event not handle %s\r\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
+        ret = RETURN_ERR;
         break;
     }
+    pthread_mutex_unlock(&multiap_mutex);
 
-    return RETURN_OK;
+    return ret;
 }
 
 int multiap_event(wifi_app_t *app, wifi_event_t *event)
@@ -1135,7 +1143,7 @@ int multiap_deinit(wifi_app_t *app)
 
     wifi_util_info_print(WIFI_APPS, "%s:%d Deinitializing multiap application\n", __func__, __LINE__);
 
-    pthread_mutex_lock(&state_mutex);
+    pthread_mutex_lock(&multiap_mutex);
     /* Close all global sockets */
     for (int i = 0; i < rx_sock_count; i++) {
         if (rx_socks[i] >= 0) {
@@ -1148,7 +1156,7 @@ int multiap_deinit(wifi_app_t *app)
     close(send_sock);
     send_sock = -1;
     state = multiap_state_none;
-    pthread_mutex_unlock(&state_mutex);
+    pthread_mutex_unlock(&multiap_mutex);
 
     /* Stop station VAPs */
     if (ctrl != NULL) {
@@ -1156,7 +1164,7 @@ int multiap_deinit(wifi_app_t *app)
         start_station_vaps(true, false);
     }
     /* Destroy state mutex */
-    pthread_mutex_destroy(&state_mutex);
+    pthread_mutex_destroy(&multiap_mutex);
     wifi_util_info_print(WIFI_APPS, "%s:%d Multiap app deinitialized\n", __func__, __LINE__);
 
     return RETURN_OK;
@@ -1181,23 +1189,23 @@ int multiap_init(wifi_app_t *app, unsigned int create_flag)
     }
 
     /* Initialize state mutex */
-    ret = pthread_mutex_init(&state_mutex, &attr);
+    ret = pthread_mutex_init(&multiap_mutex, &attr);
     pthread_mutexattr_destroy(&attr);
     if (ret != 0) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to initialize state mutex: %d\n",
+        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to initialize multiap mutex: %d\n",
             __func__, __LINE__, ret);
         return RETURN_ERR;
     }
 
     if (app_init(app, create_flag) != 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to register app!\n", __func__, __LINE__);
-        pthread_mutex_destroy(&state_mutex);
+        pthread_mutex_destroy(&multiap_mutex);
         return RETURN_ERR;
     }
 
-    pthread_mutex_lock(&state_mutex);
+    pthread_mutex_lock(&multiap_mutex);
     state = multiap_state_none;
-    pthread_mutex_unlock(&state_mutex);
+    pthread_mutex_unlock(&multiap_mutex);
 
     wifi_util_info_print(WIFI_APPS, "%s:%d Init multiap_app\n", __func__, __LINE__);
 
