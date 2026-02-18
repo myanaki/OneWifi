@@ -23,7 +23,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#define MAX_BUFF_SZ 1024
 #define CTRL_CAP_SZ 8
 
 typedef struct {
@@ -39,7 +38,7 @@ typedef enum {
 
 typedef struct {
     vsz_event_id_t id;
-    unsigned char data[MAX_BUFF_SZ - sizeof(vsz_event_id_t)];
+    unsigned char data[1024 - sizeof(vsz_event_id_t)];
 } web_event_t;
 
 typedef enum {
