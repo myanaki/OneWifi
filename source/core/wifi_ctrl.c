@@ -1868,6 +1868,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 #endif
 
     if(rfc_param->multiap_rfc) {
+        ctrl->multiap_sta_enabled = true;
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     }
 
