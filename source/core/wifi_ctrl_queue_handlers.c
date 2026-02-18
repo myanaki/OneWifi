@@ -2739,7 +2739,6 @@ void process_multiap_rfc(bool type)
     rfc_param->multiap_rfc = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
     if(rfc_param->multiap_rfc) {
-        ctrl->multiap_enabled = true;
         wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_rfc RFC is Enabled & Starting station vaps\n", __func__, __LINE__);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     } else {
@@ -2932,7 +2931,6 @@ void process_device_mode_command_event(int device_mode)
                check when the XLE goes in GW mode and WANFAILOVER mode then will the stations be connected to GW or not
                Based on this we have to take the action */
             if (rfc_param->multiap_rfc && is_device_type_xle()) {
-                ctrl->multiap_sta_enabled = true;
                 apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
             }
             if (is_sta_enabled() == false) {

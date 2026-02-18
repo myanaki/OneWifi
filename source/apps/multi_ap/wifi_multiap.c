@@ -1000,7 +1000,6 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 
     //Stop station VAPs
     if (ctrl != NULL && ctrl->multiap_sta_enabled == true) {
-        ctrl->multiap_sta_enabled = false;
         start_station_vaps(true, false);
     }
 
@@ -1110,12 +1109,27 @@ static int event_exec_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
 
 int multiap_event(wifi_app_t *app, wifi_event_t *event)
 {
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Ctrl is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
     switch (event->event_type) {
     case wifi_event_type_webconfig:
         break;
 
     case wifi_event_type_exec:
-        event_exec_multiap(app, event->sub_type, NULL);
+        if (event->sub_type == wifi_event_exec_start) {
+            ctrl->multiap_sta_enabled = true;
+            event_exec_multiap(app, event->sub_type, NULL);
+        } else if (event->sub_type == wifi_event_exec_stop) {
+            ctrl->multiap_sta_enabled = false;
+            event_exec_multiap(app, event->sub_type, NULL);
+        } else {
+            wifi_util_error_print(WIFI_APPS, "%s:%d Event not handled %s\n", __func__, __LINE__,
+                wifi_event_subtype_to_string(event->sub_type));
+        }
         break;
 
     case wifi_event_type_hal_ind:
