@@ -49,6 +49,7 @@
 #define MAX_BUFF_SZ 1024
 #define MAX_IFACES 8
 #define ETH_P_1905 0x893a
+#define is_device_type_xle() true
 
 /* Timeout Macros */
 #define MULTIAP_RESP_TIMEOUT (1000)
