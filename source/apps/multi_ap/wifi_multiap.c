@@ -74,7 +74,7 @@ static int create_autoconfig_search(unsigned char *buff, char *ifname);
 static int send_frame(unsigned char *buff, unsigned int len, bool multicast, char *ifname);
 static void send_multiap_broadcast_message(char *ifname);
 static int receive_multiap_message();
-static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *interface_name);
+//static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *interface_name);
 static int parse_multiap_tlv(unsigned char *buff, unsigned int len, multiap_tlv_type_t type,
     void *out_buff, size_t out_len);
 
@@ -171,9 +171,7 @@ static int parse_multiap_tlv(unsigned char *buff, unsigned int len, multiap_tlv_
 
 static int handle_autoconf_search(unsigned char *data, unsigned int len, char *recv_interface)
 {
-    unsigned char msg[MAX_BUFF_SZ];
     mac_address_t dst;
-    wifi_ctrl_t *ctrl = NULL;
     char st[64];
     unsigned char buff[128] = { 0 };
     multiap_supported_srv_t *srv = (multiap_supported_srv_t *)buff;
@@ -197,7 +195,6 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
     }
 
     state = multiap_state_completed;
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     /* Extract AL MAC address */
     if (parse_multiap_tlv(data, len, multiap_tlv_type_al_mac_address, &dst, sizeof(mac_address_t)) < 0) {
@@ -207,7 +204,8 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
 
     uint8_mac_to_string_mac(dst, st);
     wifi_util_info_print(WIFI_APPS, "%s:%d Sender mac=%s\n", __func__, __LINE__, st);
-
+//To test case where AP receives M1 but M2 it will not send
+#if 0
    /* Send response on the interface where packet was received */
     if (recv_interface != NULL && strlen(recv_interface) > 0) {
         len = create_autoconfig_resp_msg(msg, (unsigned char *)dst, recv_interface);
@@ -220,7 +218,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
     /* Set device to extender mode*/
     set_to_extender_mode(&ctrl->handle, FAILOVER_ENABLE, 0, 0);
     set_to_extender_mode(&ctrl->handle, WIFI_DEVICE_MODE, 1, 1);
-
+#endif
     wifi_util_info_print(WIFI_APPS, "%s:%d Split brain detected - Device switched to extender mode\n",
         __func__, __LINE__);
     return RETURN_OK;
@@ -533,7 +531,7 @@ static int create_raw_socket(const char *iface_name)
 
     return sockfd;
 }
-
+#if 0
 static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *interface_name)
 {
     unsigned short msg_id = multiap_msg_type_autoconf_resp;
@@ -677,7 +675,7 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
 
     return len;
 }
-
+#endif
 static void proto_process(unsigned char *data, unsigned int len, char *recv_interface)
 {
     wifi_ctrl_t *ctrl;
