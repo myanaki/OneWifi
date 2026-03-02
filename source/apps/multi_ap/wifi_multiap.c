@@ -915,7 +915,7 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
 		NULL, MULTIAP_CONNECT_TIMEOUT, 0, FALSE);
         wifi_util_info_print(WIFI_APPS, "%s:%d Registered multiap timer task\n", __func__, __LINE__);
-    } else if (is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
+    } else if (is_device_type_xle()) {
         state = multiap_state_respond_to_search;
         wifi_util_info_print(WIFI_APPS, "%s:%d Creating Rx thread\n", __func__, __LINE__);
         if (receive_multiap_message() != 0) {
