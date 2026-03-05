@@ -43,12 +43,15 @@
 #include "wifi_util.h"
 #include "scheduler.h"
 #include "const.h"
+#include "wifi_hal.h"
+#include "common/ieee802_11_defs.h"
 
 /* MACROS */
 #define FAILOVER_ENABLE "Device.X_RDK_GatewayManagement.Failover.Enable"
 #define MAX_BUFF_SZ 1024
 #define MAX_IFACES 8
 #define ETH_P_1905 0x893a
+#define ARRAY_SZ(x) (sizeof(x) / sizeof((x)[0]))
 
 /* Timeout Macros */
 #define MULTIAP_RESP_TIMEOUT (1000)
@@ -744,7 +747,7 @@ static void *receive_multicast_message(void *ctx)
     const char *ifaces[] = { "wl1", "wl1.1", "wl0", "wl0.1", "brlan0", "wl1.7", "wl0.7" , "brlan1" };
     char buffer[MAX_FRAME_SZ];
 
-    struct pollfd poll_fds[ARRAY_SIZE(ifaces)];
+    struct pollfd poll_fds[ARRAY_SZ(ifaces)];
 
     for (int i = 0; i < rx_sock_count; i++) {
         if (rx_socks[i] >= 0) {
@@ -755,7 +758,7 @@ static void *receive_multicast_message(void *ctx)
     }
     rx_sock_count = 0;
     wifi_util_info_print(WIFI_APPS, "%s:%d Initializing sockets on interfaces\n", __func__, __LINE__);
-    for (unsigned int i = 0; i < ARRAY_SIZE(ifaces); ++i) {
+    for (unsigned int i = 0; i < ARRAY_SZ(ifaces); ++i) {
         rx_socks[i] = create_raw_socket(ifaces[i]);
         if (rx_socks[i] < 0) {
             wifi_util_info_print(WIFI_APPS, "Failed to initialize socket on %s\n", ifaces[i]);
@@ -1046,13 +1049,71 @@ static int multiap_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
     return RETURN_OK;
 }
 
+void multiap_apps_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg)
+{
+    struct ieee80211_mgmt *frame = NULL;
+    mac_addr_str_t sa_str = {0};
+    mac_addr_str_t da_str = {0};
+    char *Saddr = NULL;
+    char *Daddr = NULL;
+
+    if (msg == NULL)
+        return;
+
+    frame = (struct ieee80211_mgmt *)msg->data;
+
+    Saddr = to_mac_str((unsigned char *)frame->sa, sa_str);
+    Daddr = to_mac_str((unsigned char *)frame->da, da_str);
+
+    if (Saddr == NULL || Daddr == NULL) {
+        wifi_util_info_print(WIFI_APPS, "%s:%d mac str convert failure\r\n", __func__, __LINE__);
+        return;
+    }
+
+    switch (msg->frame.type) {
+    case WIFI_MGMT_FRAME_TYPE_PROBE_REQ:
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d PROBE_REQ: ap_index:%d length:%d type:%d dir:%d SA:%s DA:%s rssi:%d\r\n",
+            __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, Saddr, Daddr, msg->frame.sig_dbm);
+        break;
+
+    case WIFI_MGMT_FRAME_TYPE_PROBE_RSP:
+        wifi_util_info_print(WIFI_APPS, "%s:%d PROBE_RSP: ap_index:%d length:%d type:%d dir:%d SA:%s DA:%s\r\n",
+            __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, Saddr, Daddr);
+        break;
+
+    case WIFI_MGMT_FRAME_TYPE_AUTH:
+        wifi_util_info_print(WIFI_APPS, "%s:%d AUTH: ap_index:%d length:%d type:%d dir:%d SA:%s DA:%s\r\n",
+            __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, Saddr, Daddr);
+        break;
+
+    case WIFI_MGMT_FRAME_TYPE_ASSOC_REQ:
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d ASSOC_REQ: ap_index:%d length:%d type:%d dir:%d src mac:%s SA:%s DA:%s rssi:%d\r\n",
+            __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, Saddr, Daddr, msg->frame.sig_dbm);
+        break;
+
+    case WIFI_MGMT_FRAME_TYPE_ASSOC_RSP:
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d ASSOC_RSP: ap_index:%d length:%d type:%d dir:%d SA:%s DA:%s\r\n",
+            __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, Saddr, Daddr);
+        break;
+
+    default:
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d Unknown MGMT frame: type:%d ap_index:%d\r\n",
+            __func__, __LINE__, msg->frame.type, msg->frame.ap_index);
+        break;
+    }
+
+    return;
+}
+
 static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if (ctrl->multiap_sta_enabled == false) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d Called when multiap disabled evt:%s\n",
-            __func__, __LINE__, wifi_event_subtype_to_string(sub_type));
         return RETURN_OK;
     }
 
@@ -1063,7 +1124,13 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
             wifi_event_subtype_to_string(sub_type));
         multiap_event_hal_sta_conn_status(apps, arg);
         break;
-
+    case wifi_event_hal_probe_req_frame:
+    case wifi_event_hal_probe_rsp_frame:
+    case wifi_event_hal_auth_frame:
+    case wifi_event_hal_assoc_req_frame:
+    case wifi_event_hal_assoc_rsp_frame:
+        multiap_apps_mgmt_frame_event(apps, (frame_data_t *)arg);
+        break;
     default:
         wifi_util_error_print(WIFI_APPS, "%s:%d Event not handle %s\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
@@ -1106,8 +1173,6 @@ static int event_exec_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
         break;
 
     default:
-        wifi_util_error_print(WIFI_APPS, "%s:%d Event not handle %s\r\n", __func__, __LINE__,
-            wifi_event_subtype_to_string(sub_type));
         ret = RETURN_ERR;
         break;
     }
