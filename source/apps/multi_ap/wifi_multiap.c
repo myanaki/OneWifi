@@ -49,6 +49,7 @@
 #define MAX_BUFF_SZ 1024
 #define MAX_IFACES 8
 #define ETH_P_1905 0x893a
+#define is_device_type_xle() true
 
 /* Timeout Macros */
 #define MULTIAP_RESP_TIMEOUT (1000)
@@ -1048,6 +1049,52 @@ static int multiap_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
     return RETURN_OK;
 }
 
+void mgmt_hex_dump(unsigned int length, unsigned char *buffer)
+{
+    if (buffer == NULL) {
+        wifi_util_info_print(WIFI_APPS, "%s:%d: buffer NULL\n", __func__, __LINE__);
+        return;
+    }
+
+    char line[16 * 3 + 1];  // "XX " * 16 + null terminator
+    unsigned int i;
+    int offset = 0;
+
+    for (i = 0; i < length; i++) {
+        offset += snprintf(line + offset, sizeof(line) - offset, "%02X ", buffer[i]);
+        if ((i + 1) % 16 == 0) {
+            wifi_util_info_print(WIFI_APPS, "%s\n", line);
+            offset = 0;
+            line[0] = '\0';
+        }
+    }
+
+    if (offset > 0) {
+        wifi_util_info_print(WIFI_APPS, "%s\n", line);
+    }
+}
+
+void multiap_probe_rsp_frame_event(wifi_app_t *app, frame_data_t *msg)
+{
+    wifi_util_info_print(WIFI_APPS,"%s:%d wifi probe rsp mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+    wifi_util_info_print(WIFI_APPS,"%s:%d Probe Response Frame Dump(len=%d):\n", __func__, __LINE__, msg->frame.len);
+    mgmt_hex_dump(msg->frame.len, (unsigned char *)msg->data);
+}
+
+void multiap_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
+{
+    wifi_util_info_print(WIFI_APPS,"%s:%d wifi assoc req mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+    wifi_util_info_print(WIFI_APPS,"%s:%d Assoc Request Frame Dump(len=%d):\n", __func__, __LINE__, msg->frame.len);
+    mgmt_hex_dump(msg->frame.len, (unsigned char *)msg->data);
+}
+
+void multiap_assoc_rsp_frame_event(wifi_app_t *app, frame_data_t *msg)
+{
+    wifi_util_info_print(WIFI_APPS,"%s:%d wifi assoc rsp mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+    wifi_util_info_print(WIFI_APPS,"%s:%d Assoc Response Frame Dump(len=%d):\n", __func__, __LINE__, msg->frame.len);
+    mgmt_hex_dump(msg->frame.len, (unsigned char *)msg->data);
+}
+
 static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -1064,6 +1111,23 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
         multiap_event_hal_sta_conn_status(apps, arg);
         break;
 
+    case wifi_event_hal_probe_rsp_frame:
+        wifi_util_info_print(WIFI_APPS, "%s:%d Handling Evt: %s\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        multiap_probe_rsp_frame_event(apps, arg);
+        break;
+
+    case wifi_event_hal_assoc_req_frame:
+        wifi_util_info_print(WIFI_APPS, "%s:%d Handling Evt: %s\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        multiap_assoc_req_frame_event(apps, arg);
+        break;
+
+    case wifi_event_hal_assoc_rsp_frame:
+        wifi_util_info_print(WIFI_APPS, "%s:%d Handling Evt: %s\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        multiap_assoc_rsp_frame_event(apps, arg);
+        break;
     default:
         break;
     }
