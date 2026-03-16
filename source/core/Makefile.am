@@ -173,6 +173,12 @@ endif
 OneWifi_SOURCES += $(top_srcdir)/source/apps/linkquality/wifi_linkquality.c
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/linkquality/
 
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+if ONEWIFI_MULTIAP_APP_SUPPORT
+OneWifi_SOURCES += $(top_srcdir)/source/apps/multi_ap/wifi_multiap.c
+endif
+
+
 if USE_DML_SOURCES
 # Common WFA DML sources (used in both ONEWIFI_DML_SUPPORT and ONEWIFI_JSON_DML_SUPPORT)
 WFA_JSON_DML_SOURCES = $(top_srcdir)/source/platform/common/data_model/wifi_dml_json_parser.c $(top_srcdir)/source/platform/common/data_model/wifi_dml_api.c \
