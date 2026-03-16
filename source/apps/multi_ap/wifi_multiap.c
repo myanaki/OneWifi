@@ -989,7 +989,10 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
 
     //Stop station VAPs
     ctrl->multiap_sta_enabled = false;
-    start_station_vaps(true, false);
+
+    if (!is_device_type_xle()) {
+        start_station_vaps(true, false);
+    }
 
     wifi_util_info_print(WIFI_APPS, "%s:%d Multiap application stopped\n", __func__, __LINE__);
 
@@ -1015,20 +1018,22 @@ static int multiap_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
                     sta_data->bss_info.bssid[2], sta_data->bss_info.bssid[3],
                     sta_data->bss_info.bssid[4], sta_data->bss_info.bssid[5]);
             wifi_util_info_print(WIFI_APPS, analytics_format_hal_core, "Sta status", temp_str);
-            state = multiap_state_search_rsp_pending;
-            strncpy(connected_interface, sta_data->interface_name, sizeof(connected_interface) - 1);
-            wifi_util_info_print(WIFI_APPS, "%s:%d Connected on interface: %s\n",
-                __func__, __LINE__, connected_interface);
-            if (receive_multiap_message() != 0) {
-                close(send_sock);
-                wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create receive thread\n", __func__, __LINE__);
-                apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
-                return RETURN_ERR;
+            if (!is_device_type_xle()) {
+                state = multiap_state_search_rsp_pending;
+                strncpy(connected_interface, sta_data->interface_name, sizeof(connected_interface) - 1);
+                wifi_util_info_print(WIFI_APPS, "%s:%d Connected on interface: %s\n",
+                    __func__, __LINE__, connected_interface);
+                if (receive_multiap_message() != 0) {
+                    close(send_sock);
+                    wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create receive thread\n", __func__, __LINE__);
+                    apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+                    return RETURN_ERR;
+                }
+                /* Stop the scheduler */
+                scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
+                scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
+                    NULL, MULTIAP_RESP_TIMEOUT, 0, FALSE);
             }
-            /* Stop the scheduler */
-            scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
-            scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
-                NULL, MULTIAP_RESP_TIMEOUT, 0, FALSE);
             break;
         case wifi_connection_status_disconnected:
             snprintf(temp_str, sizeof(temp_str), "Disconnected: vap_index %d bssid %02x:%02x:%02x:%02x:%02x:%02x",
@@ -1036,7 +1041,9 @@ static int multiap_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
                     sta_data->bss_info.bssid[2], sta_data->bss_info.bssid[3],
                     sta_data->bss_info.bssid[4], sta_data->bss_info.bssid[5]);
             wifi_util_info_print(WIFI_APPS, analytics_format_hal_core, "Sta status", temp_str);
-            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+            if (!is_device_type_xle()) {
+                apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+            }
             break;
         default:
             wifi_util_error_print(WIFI_APPS, "%s:%d Unknown status %d\n", __func__, __LINE__, sta_data->stats.connect_status);
@@ -1051,8 +1058,6 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if (ctrl->multiap_sta_enabled == false) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d Called when multiap disabled evt:%s\n",
-            __func__, __LINE__, wifi_event_subtype_to_string(sub_type));
         return RETURN_OK;
     }
 
@@ -1065,8 +1070,6 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
         break;
 
     default:
-        wifi_util_error_print(WIFI_APPS, "%s:%d Event not handle %s\n", __func__, __LINE__,
-            wifi_event_subtype_to_string(sub_type));
         break;
     }
     pthread_mutex_unlock(&multiap_mutex);
