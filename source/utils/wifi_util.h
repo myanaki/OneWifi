@@ -473,6 +473,7 @@ int get_partner_id(char *partner_id);
 int interfacename_from_mac(const mac_address_t *mac, char *ifname);
 int mac_address_from_name(const char *ifname, mac_address_t mac);
 bool is_zero_mac(const uint8_t *mac);
+int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac);
 #ifdef __cplusplus
 }
 #endif
