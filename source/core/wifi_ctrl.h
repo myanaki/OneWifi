@@ -273,6 +273,8 @@ typedef struct wifi_ctrl {
     hotspot_cfg_sem_param_t hotspot_sem_param;
     bool                rf_status_down;
     bool                hotspot_client_dhcp_failure_subscribed;
+    bool                multiap_sta_enabled;
+    int                 multiap_timer_id;
 } wifi_ctrl_t;
 
 
@@ -413,12 +415,13 @@ void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int* subdoc);
 
 int dfs_nop_start_timer(void *args);
 int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
-void start_station_vaps(bool enable);
+void start_station_vaps(bool is_private, bool enable);
 bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec);
 void hotspot_cfg_sem_signal(bool status);
 bus_error_t publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status);
 int publish_endpoint_enable(void);
 int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
+int set_to_extender_mode(bus_handle_t *handle, const char *paramNames, unsigned int data_value, int type);
 
 #ifdef __cplusplus
 }
