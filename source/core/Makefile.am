@@ -189,6 +189,10 @@ OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_sensing/tflite/src/inference.c
                    $(top_srcdir)/source/apps/wifi_sensing/tflite/src/wifi_tools.c
 
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/wifi_sensing/tflite/inc/
+
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+if ONEWIFI_MULTIAP_APP_SUPPORT
+OneWifi_SOURCES += $(top_srcdir)/source/apps/multi_ap/wifi_multiap.c
 endif
 
 if USE_DML_SOURCES
