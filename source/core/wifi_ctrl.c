@@ -1829,6 +1829,9 @@ int validate_and_sync_private_vap_credentials()
                 get_bus_descriptor()->bus_data_free_fn(&data);
                 return RETURN_ERR;
             }
+            //TEst.
+            wifi_util_info_print(WIFI_CTRL, "Private vaps credentials= %d and reboot reason =%s\n",
+            default_private_credentials, pTmp);
             wifi_util_info_print(WIFI_CTRL,
                 "Force Reset called on %s because privatevap vap credentials are default \n",
                 PRIVATE_SUB_DOC);
