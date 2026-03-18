@@ -1799,12 +1799,12 @@ static void deviceModeHandler(char *event_name, raw_data_t *p_data, void *userDa
 {
     (void)userData;
     int device_mode;
-
+    wifi_util_info_print(WIFI_APPS, "%s:%d: Test1\n", __func__, __LINE__);
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d recvd event:%s\n", __func__, __LINE__, event_name);
 
     if ((strcmp(event_name, WIFI_DEVICE_MODE) == 0) && (p_data->data_type == bus_data_type_uint32)) {
         device_mode = p_data->raw_data.u32;
-
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Test2\n", __func__, __LINE__);
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__,
             event_name, device_mode);
         push_event_to_ctrl_queue(&device_mode, sizeof(device_mode), wifi_event_type_command,
@@ -1821,12 +1821,12 @@ static void testDeviceModeHandler(char *event_name, raw_data_t *p_data, void *us
 {
     (void)userData;
     int device_mode = rdk_dev_mode_type_gw;
-
+    wifi_util_info_print(WIFI_APPS, "%s:%d: Test3\n", __func__, __LINE__);
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d recvd event:%s\n", __func__, __LINE__, event_name);
 
     if ((strcmp(event_name, TEST_WIFI_DEVICE_MODE) == 0) && (p_data->data_type == bus_data_type_uint32)) {
         device_mode = p_data->raw_data.u32;
-
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Test4\n", __func__, __LINE__);
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__,
             event_name, device_mode);
         push_event_to_ctrl_queue(&device_mode, sizeof(device_mode), wifi_event_type_command,

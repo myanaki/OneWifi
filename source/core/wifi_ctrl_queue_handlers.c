@@ -2959,6 +2959,8 @@ void process_device_mode_command_event(int device_mode)
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d: device mode changed: %d\n", __func__, __LINE__,
         device_mode);
+    wifi_util_info_print(WIFI_APPS, "%s:%d: device mode changed: %d\n", __func__, __LINE__,
+        device_mode);
 
     ctrl->network_mode = device_mode;
 
@@ -2967,6 +2969,7 @@ void process_device_mode_command_event(int device_mode)
         update_wifi_global_config(global_param);
         update_wifi_vap_config(device_mode);
         if (device_mode == rdk_dev_mode_type_ext) {
+            wifi_util_info_print(WIFI_APPS, "%s:%d: stop Multiap\n", __func__, __LINE__);
             apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
             if (is_sta_enabled() == true) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
@@ -2979,6 +2982,7 @@ void process_device_mode_command_event(int device_mode)
             check when the XLE goes in GW mode and WANFAILOVER mode then will the stations be connected to GW or not
             Based on this we have to take the action */
             if (rfc_param->multiap_rfc && is_device_type_xle()) {
+                wifi_util_info_print(WIFI_APPS, "%s:%d: start Multiap\n", __func__, __LINE__);
                 apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
             }
             if (is_sta_enabled() == false) {
@@ -3981,6 +3985,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
 
     case wifi_event_type_device_network_mode:
+
         process_device_mode_command_event(*(int *)data);
         break;
 
