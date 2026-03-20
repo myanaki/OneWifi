@@ -283,6 +283,10 @@ int apps_mgr_multiap_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wi
     }
 
     app = get_app_by_inst(apps_mgr, wifi_app_inst_multiap);
+    if (app == NULL) {
+        destroy_wifi_event(event);
+        return RETURN_ERR;
+    }
     app->desc.event_fn(app, event);
     destroy_wifi_event(event);
 #endif
