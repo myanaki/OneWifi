@@ -257,8 +257,8 @@ void selfheal_event_publish(wifi_ctrl_t *ctrl)
 void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
 {
     if (ctrl->rf_status_down == true || ctrl->multiap_sta_enabled == true) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Sta selfheal mode disabled\n",
-            __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Sta selfheal mode disabled, rf_status_down=%d, multiap_sta_enabled=%d\n",
+            __func__, __LINE__, ctrl->rf_status_down, ctrl->multiap_sta_enabled);
         return;
     }
     static bool radio_reset_triggered = false;
@@ -1883,7 +1883,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 #endif
     wifi_rfc_dml_parameters_t *rfc_param = get_ctrl_rfc_parameters();
 
-    if(rfc_param->multiap_rfc) {
+    if (rfc_param->multiap_rfc) {
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     }
 
