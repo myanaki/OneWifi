@@ -217,8 +217,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
             __func__, __LINE__, recv_interface);
     }
     /* Set device to extender mode*/
-    set_to_extender_mode(&ctrl->handle, FAILOVER_ENABLE, 0, 0);
-    set_to_extender_mode(&ctrl->handle, WIFI_DEVICE_MODE, 1, 1);
+    set_bus_bool_param(&ctrl->handle, "Device.X_RDK_GatewayManagement.SendRequestBackUpGatewayNotActive", true);
 
     wifi_util_info_print(WIFI_APPS, "%s:%d Split brain detected - Device switched to extender mode\n",
         __func__, __LINE__);
