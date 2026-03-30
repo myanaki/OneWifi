@@ -825,7 +825,7 @@ void ext_start_scan(vap_svc_t *svc)
 
         radio_oper_param = get_wifidb_radio_map(radio_index);
 
-        if (radio_oper_param->band == WIFI_FREQUENCY_6_BAND) {
+        if (radio_oper_param->band == WIFI_FREQUENCY_6_BAND){
             wifi_util_dbg_print(WIFI_CTRL,
                 "%s:%d [RNR] defer 6G radio %u\n", __func__, __LINE__, radio_index);
             continue;
