@@ -1045,7 +1045,7 @@ static int multiap_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
             }
             break;
         default:
-            wifi_util_error_print(WIFI_APPS, "%s:%d Unknown status %d\n", __func__, __LINE__, sta_data->stats.connect_status);
+            //wifi_util_error_print(WIFI_APPS, "%s:%d Unknown status %d\n", __func__, __LINE__, sta_data->stats.connect_status);
             break;
     }
 
@@ -1063,8 +1063,8 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
     pthread_mutex_lock(&multiap_mutex);
     switch (sub_type) {
     case wifi_event_hal_sta_conn_status:
-        wifi_util_info_print(WIFI_APPS, "%s:%d Handling Evt: %s\n", __func__, __LINE__,
-            wifi_event_subtype_to_string(sub_type));
+        //wifi_util_info_print(WIFI_APPS, "%s:%d Handling Evt: %s\n", __func__, __LINE__,
+            //wifi_event_subtype_to_string(sub_type));
         multiap_event_hal_sta_conn_status(apps, arg);
         break;
 
