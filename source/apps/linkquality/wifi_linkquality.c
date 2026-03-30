@@ -476,7 +476,7 @@ int exec_event_webconfig_event(wifi_app_t *apps, wifi_event_t *event)
 }
 int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg, int len)
 {
-    wifi_util_info_print(WIFI_APPS,"Enter %s:%d\n",__func__,__LINE__);
+    //wifi_util_info_print(WIFI_APPS,"Enter %s:%d\n",__func__,__LINE__);
     switch (sub_type) {
         case wifi_event_exec_start:
             break;
