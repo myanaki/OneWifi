@@ -45,7 +45,6 @@
 #include "const.h"
 
 /* MACROS */
-#define FAILOVER_ENABLE "Device.X_RDK_GatewayManagement.Failover.Enable"
 #define MAX_BUFF_SZ 1024
 #define MAX_IFACES 8
 #define ETH_P_1905 0x893a
@@ -740,7 +739,7 @@ static void *receive_multicast_message(void *ctx)
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    const char *ifaces[] = { "wl1", "wl1.1", "wl0", "wl0.1", "brlan0", "wl1.7", "wl0.7" , "brlan1" };
+    const char *ifaces[] = { "wl1", "wl0", "brlan0" };
     char buffer[MAX_FRAME_SZ];
 
     struct pollfd poll_fds[ARRAY_SIZE(ifaces)];
@@ -1045,7 +1044,7 @@ static int multiap_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
             }
             break;
         default:
-            wifi_util_error_print(WIFI_APPS, "%s:%d Unknown status %d\n", __func__, __LINE__, sta_data->stats.connect_status);
+            //wifi_util_error_print(WIFI_APPS, "%s:%d Unknown status %d\n", __func__, __LINE__, sta_data->stats.connect_status);
             break;
     }
 
@@ -1063,8 +1062,8 @@ static int event_hal_ind_multiap(wifi_app_t *apps, wifi_event_subtype_t sub_type
     pthread_mutex_lock(&multiap_mutex);
     switch (sub_type) {
     case wifi_event_hal_sta_conn_status:
-        wifi_util_info_print(WIFI_APPS, "%s:%d Handling Evt: %s\n", __func__, __LINE__,
-            wifi_event_subtype_to_string(sub_type));
+        //wifi_util_info_print(WIFI_APPS, "%s:%d Handling Evt: %s\n", __func__, __LINE__,
+            //wifi_event_subtype_to_string(sub_type));
         multiap_event_hal_sta_conn_status(apps, arg);
         break;
 
