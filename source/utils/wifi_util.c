@@ -4815,6 +4815,15 @@ int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsi
                wifi_util_info_print(WIFI_CTRL, "%s:%d interface_name=%s and mac address=%s\n",
                    __func__, __LINE__, if_prop->interface_name, st);
                 break;
+
+            }
+        if (!strncmp(if_prop->vap_name, "private_ssid", strlen("private_ssid"))) {
+               mac_address_from_name(if_prop->interface_name, mac);
+               uint8_mac_to_string_mac(mac, st);
+               wifi_util_info_print(WIFI_CTRL, "%s:%d interface_name=%s and mac address=%s\n",
+                   __func__, __LINE__, if_prop->interface_name, st);
+                break;
+
             }
         }
         if_prop++;
