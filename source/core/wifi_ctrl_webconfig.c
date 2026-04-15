@@ -3187,9 +3187,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
 
 void create_station_with_xfinity_credentials(webconfig_subdoc_data_t *data ,int num_vaps, wifi_vap_name_t *vap_names)
 {
-    int vap_index, radio_index = 0, vap_array_index = 0, band = 0, status = RETURN_OK;
-    char cm_mac_str[32] = { 0 };
-    wifi_mgr_t *mgr = get_wifimgr_obj();
+    int vap_index, radio_index = 0, vap_array_index = 0, status = RETURN_OK;
 
     for (int i = 0; i < num_vaps; i++) {
         vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
@@ -3200,84 +3198,22 @@ void create_station_with_xfinity_credentials(webconfig_subdoc_data_t *data ,int 
             vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
         if (status == RETURN_ERR) {
             break;
-        } else {
-            convert_radio_index_to_freq_band(&data->u.decoded.hal_cap.wifi_prop, radio_index,
-                &band);
-            wifi_util_info_print(WIFI_CTRL,
-                    "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
-            snprintf(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].
-            u.sta_info.ssid,sizeof(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
-            .u.sta_info.ssid), "Xfinity Mobile");
-            if (band == WIFI_FREQUENCY_6_BAND) {
-                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
-                .u.sta_info.security.mode = wifi_security_mode_wpa3_enterprise;
-            } else {
-                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
-                .u.sta_info.security.mode = wifi_security_mode_wpa2_enterprise;
-            }
-            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
-            .u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_TTLS;
+        }
+        wifi_util_info_print(WIFI_CTRL, "%s:%d vap-idx : %d radio-idx : %d vap-array-idx : %d\n", __func__, __LINE__,
+            vap_index, radio_index, vap_array_index);
 
-            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
-
-            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+        // Only toggle ignite_enabled, preserve other settings
+        data->u.decoded.radios[radio_index]
+            .vaps.vap_map.vap_array[vap_array_index]
             .u.sta_info.ignite_enabled = true;
 
-            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
-            .u.sta_info.enabled = true;
-
-            // Convert CM MAC bytes to string "XX:XX:XX:XX:XX:XX"
-            snprintf(cm_mac_str, sizeof(cm_mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
-                mgr->hal_cap.wifi_prop.cm_mac[0], mgr->hal_cap.wifi_prop.cm_mac[1],
-                mgr->hal_cap.wifi_prop.cm_mac[2], mgr->hal_cap.wifi_prop.cm_mac[3],
-                mgr->hal_cap.wifi_prop.cm_mac[4], mgr->hal_cap.wifi_prop.cm_mac[5]);
-
-            wifi_util_dbg_print(WIFI_CTRL,
-                "cm-mac : %02X:%02X:%02X:%02X:%02X:%02X mac-str : %s\n",
-                mgr->hal_cap.wifi_prop.cm_mac[0], mgr->hal_cap.wifi_prop.cm_mac[1],
-                mgr->hal_cap.wifi_prop.cm_mac[2], mgr->hal_cap.wifi_prop.cm_mac[3],
-                mgr->hal_cap.wifi_prop.cm_mac[4], mgr->hal_cap.wifi_prop.cm_mac[5], cm_mac_str);
-
-                memset(&data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                .u.sta_info.security.u.radius.identity,
-                0,
-                sizeof(data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.identity));
-                strncpy(data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.identity,
-                    cm_mac_str,
-                    sizeof(data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.identity) -
-                    1);
-                wifi_util_dbg_print(WIFI_CTRL, "Identity : %s\n",data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.identity);
-
-                memset(&data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.key,
-                    0,
-                    sizeof(data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.key));
-                strncpy(data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.key,
-                    mgr->hal_cap.wifi_prop.serialNo,
-                    sizeof(data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.key) -
-                    1);
-                wifi_util_dbg_print(WIFI_CTRL, "Serial-no : %s key : %s\n",
-                    mgr->hal_cap.wifi_prop.serialNo,
-                    data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.key);
-                }
+        wifi_util_info_print(WIFI_CTRL, "%s:%d SSID: %s vap-enable: %d ignite-enable: %d eap-type: %d phase: %d bridge: %s\n",
+            __func__, __LINE__, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.repurposed_ssid,
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.enabled,
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ignite_enabled,
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.eap_type,
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.phase2,
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].repurposed_bridge_name);
     }
 }
 
