@@ -184,7 +184,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     start_station_vaps(false, rf_status);
     if (rf_status) {
 	    wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
-        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+        //apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 
         wifi_global_config_t *global_cfg = get_wifidb_wifi_global_config();
         if (global_cfg != NULL &&
@@ -208,13 +208,13 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         }
     } else {
        wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis enabled. Stoping Station Vaps and multiap_rfc: %d\n", rfc_param->multiap_rfc);
+       //apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+       //Stop station vaps
+       stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
        if (rfc_param->multiap_rfc) {
             wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: MultiAP RFC enabled. Starting MultiAP Vaps\n");
             apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
         }
-       apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
-       //Stop station vaps
-       stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
     }
 
     return rc;
