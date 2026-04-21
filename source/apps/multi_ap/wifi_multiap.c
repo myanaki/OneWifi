@@ -1039,7 +1039,7 @@ static int multiap_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
                     sta_data->bss_info.bssid[2], sta_data->bss_info.bssid[3],
                     sta_data->bss_info.bssid[4], sta_data->bss_info.bssid[5]);
             wifi_util_info_print(WIFI_APPS, analytics_format_hal_core, "Sta status", temp_str);
-            if (!is_device_type_xle()) {
+            if (!is_device_type_xle() && (state == multiap_state_search_rsp_pending)) {
                 apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
             }
             break;

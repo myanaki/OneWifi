@@ -3263,6 +3263,9 @@ static void create_station_with_private_credentials(webconfig_subdoc_data_t *dat
                 .u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
             }
             data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+            .u.sta_info.ignite_enabled = false;
+
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
             .u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_NONE;
 
             data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
