@@ -3186,7 +3186,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
 
 void create_station_with_xfinity_credentials(webconfig_subdoc_data_t *data ,int num_vaps, wifi_vap_name_t *vap_names)
 {
-    int vap_index, radio_index = 0, vap_array_index = 0, status = RETURN_OK;
+    int vap_index, radio_index = 0, vap_array_index = 0, band=0, status = RETURN_OK;
 
     for (int i = 0; i < num_vaps; i++) {
         vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
@@ -3198,9 +3198,10 @@ void create_station_with_xfinity_credentials(webconfig_subdoc_data_t *data ,int 
         if (status == RETURN_ERR) {
             break;
         }
+        else
+        {
         wifi_util_info_print(WIFI_CTRL, "%s:%d vap-idx : %d radio-idx : %d vap-array-idx : %d\n", __func__, __LINE__,
             vap_index, radio_index, vap_array_index);
-
         // Only toggle ignite_enabled, preserve other settings
         data->u.decoded.radios[radio_index]
             .vaps.vap_map.vap_array[vap_array_index]
@@ -3213,9 +3214,23 @@ void create_station_with_xfinity_credentials(webconfig_subdoc_data_t *data ,int 
             data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.eap_type,
             data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.phase2,
             data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].repurposed_bridge_name);
-    }
-}
+    convert_radio_index_to_freq_band(&data->u.decoded.hal_cap.wifi_prop, radio_index,&band);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d radio index= %d and Band= %d\n", __func__, __LINE__, radio_index , band);
 
+            if (band == WIFI_FREQUENCY_6_BAND) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d 6G Band WPA3\n", __func__, __LINE__);
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
+            } else {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d 2.4G/5G Band WPA2\n", __func__, __LINE__);
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+            }
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+            .u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_NONE;       
+     }
+  }
+}
 static void create_station_with_private_credentials(webconfig_subdoc_data_t *data, int num_vaps, int private_num_vaps, wifi_vap_name_t *private_vap_names, wifi_vap_name_t *vap_names)
 {
     int private_vap_index = 0, radio_index = 0, vap_index = 0, band = 0;
@@ -3267,6 +3282,8 @@ static void create_station_with_private_credentials(webconfig_subdoc_data_t *dat
 
             data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
             .u.sta_info.enabled = true;
+            data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]
+            .u.sta_info.ignite_enabled = false;
         }
 
     }
