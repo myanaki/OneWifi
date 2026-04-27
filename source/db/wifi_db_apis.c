@@ -5358,7 +5358,7 @@ void wifidb_vap_config_correction(uint8_t r_index, wifi_vap_info_map_t *l_vap_ma
             continue;
         }
 
-    if ((isVapSTAMesh(vap_config->vap_index)) && (strcmp(vap_config->u.sta_info.ssid, "Xfinity samsung") == 0)) {
+    if ((isVapSTAMesh(vap_config->vap_index)) && (strcmp(vap_config->u.sta_info.ssid, "Xfinity comcast test") == 0)) {
         wifi_util_info_print(WIFI_DB, "Mesh Sta vap configured in ignite mode\n Resetting configuration\n");
         convert_radio_index_to_freq_band(&g_wifidb->hal_cap.wifi_prop, r_index, &band);
         wifi_util_info_print(WIFI_DB, "index : %d band : %d\n", r_index, band);
@@ -7574,14 +7574,14 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         cfg->u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg->u.sta_info.bssid, 0, sizeof(cfg->u.sta_info.bssid));
-        strncpy(cfg->u.sta_info.repurposed_ssid, "Xfinity Samsung", sizeof(ssid_t)-1);
-        cfg->u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_NONE;
-        cfg->u.sta_info.security.repurposed_radius.phase2 = 0;
+        strncpy(cfg->u.sta_info.repurposed_ssid, "Xfinity comcast test", sizeof(ssid_t)-1);
+        cfg->u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
+        cfg->u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
         strncpy(cfg->repurposed_bridge_name, "brww0", sizeof(cfg->repurposed_bridge_name)-1);
         if (band == WIFI_FREQUENCY_6_BAND) {
-            cfg->u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_personal;
+            cfg->u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
         } else {
-            cfg->u.sta_info.security.repurposed_mode = wifi_security_mode_wpa2_personal;
+            cfg->u.sta_info.security.repurposed_mode = wifi_security_mode_wpa2_enterprise;
         }
         memset(&cfg->u.sta_info.security.repurposed_radius.ip, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.ip));
         memset(&cfg->u.sta_info.security.repurposed_radius.s_ip, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.s_ip));

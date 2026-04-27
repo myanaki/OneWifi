@@ -396,21 +396,20 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.sta_info.scan_params.channel.channel = 0;
         cfg.u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg.u.sta_info.bssid, 0, sizeof(cfg.u.sta_info.bssid));
-        strncpy(cfg.u.sta_info.repurposed_ssid, "Xfinity samsung", sizeof(ssid_t)-1);
-        cfg.u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_NONE;
-        cfg.u.sta_info.security.repurposed_radius.phase2 = 0;
+        strncpy(cfg.u.sta_info.repurposed_ssid, "Xfinity comcast test", sizeof(ssid_t)-1);
+        cfg.u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
+        cfg.u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
         strncpy(cfg.repurposed_bridge_name, "brww0", sizeof(cfg.repurposed_bridge_name)-1);
         strncpy(cfg.u.sta_info.security.repurposed_radius.identity, "username_empty", sizeof(cfg.u.sta_info.security.repurposed_radius.identity)-1);
         strncpy(cfg.u.sta_info.security.repurposed_radius.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.repurposed_radius.key));
         if (band == WIFI_FREQUENCY_6_BAND) {
-            cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_personal;
+            cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
         } else {
-            cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa2_personal;
+            cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa2_enterprise;
         }
-        //memset(&cfg.u.sta_info.security.repurposed_radius.ip, '\0', sizeof(cfg.u.sta_info.security.repurposed_radius.ip));
-        //memset(&cfg.u.sta_info.security.repurposed_radius.s_ip, '\0', sizeof(cfg.u.sta_info.security.repurposed_radius.s_ip));
-        //wifi_util_dbg_print(WIFI_CTRL, "Ignite-ssid: %s mode: %d eap-type: %d phase: %d\n", cfg.u.sta_info.repurposed_ssid, cfg.u.sta_info.security.repurposed_mode, cfg.u.sta_info.security.repurposed_radius.eap_type, cfg.u.sta_info.security.repurposed_radius.phase2);
-         wifi_util_dbg_print(WIFI_CTRL, "Ignite-ssid: %s mode: %d eap-type: %d\n", cfg.u.sta_info.repurposed_ssid, cfg.u.sta_info.security.repurposed_mode, cfg.u.sta_info.security.repurposed_radius.eap_type);
+        memset(&cfg.u.sta_info.security.repurposed_radius.ip, '\0', sizeof(cfg.u.sta_info.security.repurposed_radius.ip));
+        memset(&cfg.u.sta_info.security.repurposed_radius.s_ip, '\0', sizeof(cfg.u.sta_info.security.repurposed_radius.s_ip));
+        wifi_util_dbg_print(WIFI_CTRL, "Ignite-ssid: %s mode: %d eap-type: %d phase: %d\n", cfg.u.sta_info.repurposed_ssid, cfg.u.sta_info.security.repurposed_mode, cfg.u.sta_info.security.repurposed_radius.eap_type, cfg.u.sta_info.security.repurposed_radius.phase2);
 
     } else {
         cfg.u.bss_info.wmm_enabled = true;
