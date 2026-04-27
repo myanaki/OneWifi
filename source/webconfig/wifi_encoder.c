@@ -1645,21 +1645,21 @@ webconfig_error_t encode_ignite_radius_object(const wifi_radius_settings_t *radi
 webconfig_error_t encode_ignite_security_object(const wifi_vap_security_t *security_info, cJSON *security,
         bool is_6g)
 {
-    cJSON *obj;
+    //cJSON *obj;
 
     if (is_6g &&
-            security_info->repurposed_mode != wifi_security_mode_wpa3_enterprise) {
+            security_info->repurposed_mode != wifi_security_mode_wpa3_personal) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode %d for 6G interface\n",
                 __func__, __LINE__, security_info->repurposed_mode);
         return webconfig_error_encode;
     }
     switch (security_info->repurposed_mode) {
-        case wifi_security_mode_wpa2_enterprise:
-            cJSON_AddStringToObject(security, "IgniteMode", "WPA2-Enterprise");
+        case wifi_security_mode_wpa2_personal:
+            cJSON_AddStringToObject(security, "IgniteMode", "WPA2-Personal");
             break;
 
         case wifi_security_mode_wpa3_enterprise:
-            cJSON_AddStringToObject(security, "IgniteMode", "WPA3-Enterprise");
+            cJSON_AddStringToObject(security, "IgniteMode", "WPA3-Personal");
             break;
 
         default:
@@ -1667,7 +1667,8 @@ webconfig_error_t encode_ignite_security_object(const wifi_vap_security_t *secur
                     __func__, __LINE__, security_info->repurposed_mode);
             return webconfig_error_encode;
     }
-    if ((security_info->repurposed_mode == wifi_security_mode_wpa2_enterprise) || (security_info->repurposed_mode == wifi_security_mode_wpa3_enterprise)) {
+#if 0
+    if ((security_info->repurposed_mode == wifi_security_mode_wpa2_personal) || (security_info->repurposed_mode == wifi_security_mode_wpa3_personal)) {
         obj = cJSON_CreateObject();
         cJSON_AddItemToObject(security, "IgniteRadiusSettings", obj);
         if (encode_ignite_radius_object(&security_info->repurposed_radius, obj) != webconfig_error_none) {
@@ -1676,6 +1677,7 @@ webconfig_error_t encode_ignite_security_object(const wifi_vap_security_t *secur
             return webconfig_error_encode;
         }
     }
+#endif
     return webconfig_error_none;    
 }
 
