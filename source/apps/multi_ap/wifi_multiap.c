@@ -52,6 +52,7 @@
 /* Timeout Macros */
 #define MULTIAP_RESP_TIMEOUT (1000)
 #define MULTIAP_CONNECT_TIMEOUT (60000 * 2)
+#define is_device_type_xle() true
 
 /* CNT Macros */
 #define MAX_SEARCH_REQ_PKTS 100
