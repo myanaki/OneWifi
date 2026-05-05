@@ -218,7 +218,7 @@ static int handle_autoconf_search(unsigned char *data, unsigned int len, char *r
     /* Set device to extender mode*/
     set_bus_bool_param(&ctrl->handle, "Device.X_RDK_GatewayManagement.SendRequestBackUpGatewayNotActive", true);
 
-    wifi_util_info_print(WIFI_APPS, "%s:%d Split brain detected - Device switched to extender mode\n",
+    wifi_util_info_print(WIFI_APPS, "%s:%d SPLIT_BRAIN: Split brain detected - Device switched to extender mode\n",
         __func__, __LINE__);
     return RETURN_OK;
 }
@@ -669,7 +669,7 @@ static int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, c
 
     tmp += (sizeof(multiap_tlv_t));
     len += (int)(sizeof(multiap_tlv_t));
-    wifi_util_info_print(WIFI_APPS, "%s:%d Autoconfig response message created successfully, total_length=%d bytes\n",
+    wifi_util_info_print(WIFI_APPS, "%s:%d SPLIT_BRAIN: Autoconfig response message created successfully, total_length=%d bytes\n",
          __func__, __LINE__, len);
 
     return len;
@@ -705,7 +705,7 @@ static void proto_process(unsigned char *data, unsigned int len, char *recv_inte
                     __func__, __LINE__);
                 state = multiap_state_none;
             } else {
-                wifi_util_info_print(WIFI_APPS, "%s:%d Autoconfig search response sent moving to extender mode\n",
+                wifi_util_info_print(WIFI_APPS, "%s:%d SPLIT_BRAIN: Autoconfig search response sent, moving to extender mode\n",
                 __func__, __LINE__);
             }
         }
@@ -719,7 +719,7 @@ static void proto_process(unsigned char *data, unsigned int len, char *recv_inte
                 wifi_util_error_print(WIFI_APPS, "%s:%d Error handling resp\n", __func__, __LINE__);
                 break;
             }
-            wifi_util_info_print(WIFI_APPS, "%s:%d Autoconfig response received, bringing down the station\n",
+            wifi_util_info_print(WIFI_APPS, "%s:%d SPLIT_BRAIN: Autoconfig response received, bringing down the station\n",
                 __func__, __LINE__);
             apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
             ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
@@ -837,7 +837,7 @@ static int receive_multiap_message()
 static int multiap_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
     if (strlen(connected_interface) > 0) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d Sending broadcast on connected interface: %s\n",
+        wifi_util_info_print(WIFI_APPS, "%s:%d SPLIT_BRAIN: Sending broadcast message on connected interface: %s\n",
             __func__, __LINE__, connected_interface);
         send_multiap_broadcast_message(connected_interface);
     }
@@ -857,7 +857,7 @@ static int multiap_timeout_fun(void* arg)
         /* Stop the scheduler */
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
         if (search_req_count == MAX_SEARCH_REQ_PKTS){
-            wifi_util_info_print(WIFI_APPS, "%s:%d Max send count reached,Stopping Send\n", __func__, __LINE__);
+            wifi_util_info_print(WIFI_APPS, "%s:%d SPLIT_BRAIN: stopping multiap app\n", __func__, __LINE__);
             apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
             pthread_mutex_unlock(&multiap_mutex);
             return RETURN_OK;
@@ -866,7 +866,7 @@ static int multiap_timeout_fun(void* arg)
 		scheduler_add_timer_task(ctrl->sched, FALSE, &ctrl->multiap_timer_id, multiap_timeout_fun,
 		    NULL, MULTIAP_RESP_TIMEOUT, 0, FALSE);
     } else if (state == multiap_state_sta_create_and_connect) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d Connection timeout: Failed to connect/find GW device\n",
+        wifi_util_info_print(WIFI_APPS, "%s:%d SPLIT_BRAIN: Timeout stopping multiap app\n",
             __func__, __LINE__);
         scheduler_cancel_timer_task(ctrl->sched, ctrl->multiap_timer_id);
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
@@ -886,7 +886,7 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
 
-    wifi_util_info_print(WIFI_APPS, "%s:%d Starting multiap event execution\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d SPLIT_BRAIN: Starting multiap event execution\n", __func__, __LINE__);
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d Ctrl is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -915,7 +915,7 @@ static int multiap_event_exec_start(wifi_app_t *apps, void *arg)
         wifi_util_info_print(WIFI_APPS, "%s:%d Registered multiap timer task\n", __func__, __LINE__);
     } else if (is_device_type_xle() && (ctrl->network_mode == rdk_dev_mode_type_gw)) {
         state = multiap_state_respond_to_search;
-        wifi_util_info_print(WIFI_APPS, "%s:%d Creating Rx thread\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_APPS, "%s:%d SPLIT_BRAIN: Creating Receiver thread\n", __func__, __LINE__);
         if (receive_multiap_message() != 0) {
             close(send_sock);
             wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create a receive thread for Multip messages\n",
@@ -992,7 +992,7 @@ static int multiap_event_exec_stop(wifi_app_t *apps, void *arg)
         start_station_vaps(true, false);
     }
 
-    wifi_util_info_print(WIFI_APPS, "%s:%d Multiap application stopped\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_APPS, "%s:%d SPLIT_BRAIN: Multiap application stopped\n", __func__, __LINE__);
 
     return RETURN_OK;
 }
