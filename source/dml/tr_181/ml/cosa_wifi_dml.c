@@ -18051,7 +18051,7 @@ MacFiltTab_GetEntryCount
         return 0;
     }
     unsigned int count = 0;
-    unsigned int count_hash = 0, count_queue = 0;
+    unsigned int count_hash = 0;
     
     if (vap_info->vap_index > MAX_VAP) {
         wifi_util_error_print(WIFI_DMCLI,"%s:%d vap_index out of range: %d\n",__func__, __LINE__, vap_info->vap_index);
@@ -18066,14 +18066,9 @@ MacFiltTab_GetEntryCount
         count  = count + count_hash;
     }
 
-    if (*acl_new_entry_queue != NULL) {
-        count_queue = queue_count(*acl_new_entry_queue);
-        count = count + count_queue;
-    } else {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d ERROR NULL queue Pointer \n",__func__, __LINE__);
-    }
-    
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Total count=%u (hash=%u queue=%u)\n",__func__, __LINE__, count, count_hash, count_queue);
+    // NOTE: Queue entries (zero-MAC placeholders) are hidden from table enumeration
+    // They only appear once a MAC address is set and they move to hash_map
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Total count=%u (committed hash_map entries only)\n",__func__, __LINE__, count);
     return count;
 }
 
@@ -18092,7 +18087,7 @@ MacFiltTab_GetEntry
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer \n",__func__, __LINE__);
         return 0;
     }
-    unsigned int count_hash = 0, itr = 0, count_queue = 0;
+    unsigned int count_hash = 0, itr = 0;
     acl_entry_t *acl_entry = NULL;
     void** acl_vap_context = (void **)get_acl_vap_context();
 
@@ -18108,19 +18103,17 @@ MacFiltTab_GetEntry
 
     if (*acl_device_map != NULL) {
         count_hash = hash_map_count(*acl_device_map);
-    } 
-
-    if (*acl_new_entry_queue != NULL) {
-        count_queue  = queue_count(*acl_new_entry_queue);
     }
 
-    if (nIndex > (count_hash + count_queue)) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Wrong nIndex %lu (total entries=%u hash=%u queue=%u)\n",
-            __func__, __LINE__, nIndex, count_hash + count_queue, count_hash, count_queue);
+    // Only retrieve from hash_map (committed entries with valid MACs)
+    // Queue entries (zero-MAC placeholders) are hidden from table enumeration
+    if (nIndex >= count_hash) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d nIndex %lu out of range (hash_map has %u committed entries)\n",
+            __func__, __LINE__, nIndex, count_hash);
         return (ANSC_HANDLE)NULL;
     }
 
-    // First retrieve from hash_map
+    // Retrieve from hash_map only
     if ((*acl_device_map != NULL) && (nIndex < count_hash)) {
         acl_entry = hash_map_get_first(*acl_device_map);
         for (itr=0; (itr<nIndex) && (acl_entry != NULL); itr++) {
@@ -18129,26 +18122,12 @@ MacFiltTab_GetEntry
         if (acl_entry != NULL) {
             *pInsNumber = nIndex+1;
             *acl_vap_context = (void *)vap_info;
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Found entry from hash_map at index %lu\n", __func__, __LINE__, nIndex);
-            return (ANSC_HANDLE)acl_entry;
-        }
-    } 
-    
-    // Then retrieve from queue, with validation
-    if (*acl_new_entry_queue != NULL) {
-        unsigned int queue_index = nIndex - count_hash;
-        acl_entry = (acl_entry_t *) queue_peek(*acl_new_entry_queue, queue_index);
-        
-        // Validate the retrieved entry
-        if (acl_entry != NULL) {
-            *pInsNumber = nIndex+1;
-            *acl_vap_context = (void *)vap_info;
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Found entry from queue at index %u\n", __func__, __LINE__, queue_index);
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Found committed entry from hash_map at index %lu\n", __func__, __LINE__, nIndex);
             return (ANSC_HANDLE)acl_entry;
         }
     }
 
-    wifi_util_error_print(WIFI_DMCLI,"%s:%d Failed to retrieve entry at nIndex=%lu\n", __func__, __LINE__, nIndex);
+    wifi_util_error_print(WIFI_DMCLI,"%s:%d Failed to retrieve entry at nIndex=%lu from hash_map\n", __func__, __LINE__, nIndex);
     return (ANSC_HANDLE)NULL;
 }
 
