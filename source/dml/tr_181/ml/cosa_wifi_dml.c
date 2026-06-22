@@ -18065,6 +18065,7 @@ MacFiltTab_GetEntryCount
         count_hash  = hash_map_count(*acl_device_map);
         count  = count + count_hash;
     }
+    (void)acl_new_entry_queue;
 
     // NOTE: Queue entries (zero-MAC placeholders) are hidden from table enumeration
     // They only appear once a MAC address is set and they move to hash_map
@@ -18208,10 +18209,27 @@ MacFiltTab_DelEntry
 
     queue_t** acl_new_entry_queue = (queue_t **)get_acl_new_entry_queue(vap_info);
     hash_map_t** acl_device_map = (hash_map_t **)get_acl_hash_map(vap_info);
+    unsigned int queue_entries = 0;
+    unsigned int hash_entries = 0;
+
     if (*acl_new_entry_queue ==  NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unexpected ERROR!!! acl_new_entry_queue should not be NULL\n", __func__,__LINE__);
         *acl_new_entry_queue = queue_create();
     }
+
+    if (*acl_device_map != NULL) {
+        hash_entries = hash_map_count(*acl_device_map);
+    }
+
+    if (*acl_new_entry_queue != NULL) {
+        queue_entries = queue_count(*acl_new_entry_queue);
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d DelEntry start: acl_entry=%p mac=%02X:%02X:%02X:%02X:%02X:%02X zero=%d hash_count=%u queue_count=%u\n",
+        __func__, __LINE__, acl_entry,
+        acl_entry->mac[0], acl_entry->mac[1], acl_entry->mac[2], acl_entry->mac[3], acl_entry->mac[4], acl_entry->mac[5],
+        (memcmp(acl_entry->mac, zero_mac, sizeof(mac_address_t)) == 0),
+        hash_entries, queue_entries);
 
     if (memcmp(acl_entry->mac, zero_mac, sizeof(mac_address_t)) == 0) {
         // Entry with zero MAC should be in queue
@@ -18225,7 +18243,8 @@ MacFiltTab_DelEntry
                         free(map_acl_entry);
                     }
                     found = TRUE;
-                    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Removed from queue (zero MAC)\n", __func__, __LINE__);
+                    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Removed from queue (zero MAC) at index %u queue_count_after=%u\n",
+                        __func__, __LINE__, itr, queue_count(*acl_new_entry_queue));
                     break;
                 }
             }
@@ -18233,15 +18252,15 @@ MacFiltTab_DelEntry
         
         // Defensive: if not found in queue, try hash_map (entry may have been moved)
         if (!found && (*acl_device_map != NULL)) {
-            to_mac_str(acl_entry->mac, mac_str);
-            tmp_acl_entry = hash_map_remove(*acl_device_map, mac_str);
-            if (tmp_acl_entry != NULL) {
-                free(tmp_acl_entry);
-                found = TRUE;
-                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Removed from hash_map (was zero MAC)\n", __func__, __LINE__);
+                to_mac_str(acl_entry->mac, mac_str);
+                tmp_acl_entry = hash_map_remove(*acl_device_map, mac_str);
+                if (tmp_acl_entry != NULL) {
+                    free(tmp_acl_entry);
+                    found = TRUE;
+                    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Removed from hash_map (was zero MAC) queue_count=%u hash_count_after=%u\n",
+                        __func__, __LINE__, queue_count(*acl_new_entry_queue), hash_map_count(*acl_device_map));
+                }
             }
-        }
-        
         return found ? ANSC_STATUS_SUCCESS : ANSC_STATUS_FAILURE;
     } else {
         // Entry with non-zero MAC should be in hash_map
@@ -18271,6 +18290,8 @@ MacFiltTab_DelEntry
         }
 
         if (found) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Deleted non-zero MAC entry from %s queue_count=%u hash_count=%u\n",
+                __func__, __LINE__, (tmp_acl_entry != NULL) ? "hash_map" : "queue", queue_count(*acl_new_entry_queue), (*acl_device_map != NULL) ? hash_map_count(*acl_device_map) : 0);
             // Send blob
             if(push_acl_list_dml_cache_to_one_wifidb(vap_info) == RETURN_ERR) {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mac_Filter failed \n",__func__, __LINE__);
@@ -18428,13 +18449,15 @@ MacFiltTab_SetParamStringValue
                 if (mac_acl_entry == acl_entry) {
                     mac_acl_entry = queue_remove(*acl_new_entry_queue, itr);
                     removed = TRUE;
-                    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Removed entry from queue at index %d: MAC=%s\n", __func__, __LINE__, itr, pString);
+                    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Removed entry from queue at index %d: MAC=%s\n", __fu
+nc__, __LINE__, itr, pString);
                     break;
                 }
             }
             
             if (!removed) {
-                wifi_util_error_print(WIFI_DMCLI,"%s:%d WARNING: Entry not found in queue when moving to hash_map: MAC=%s\n", __func__, __LINE__, pString);
+                wifi_util_error_print(WIFI_DMCLI,"%s:%d WARNING: Entry not found in queue when moving to hash_map: MAC=%s queue_count=%u hash_count=%u\n", 
+                    __func__, __LINE__, pString, queue_count(*acl_new_entry_queue), hash_map_count(*acl_device_map));
             }
         } else if (memcmp(acl_entry->mac, new_mac, sizeof(mac_address_t)) != 0) {
             memcpy(acl_entry->mac, new_mac, sizeof(mac_address_t));
