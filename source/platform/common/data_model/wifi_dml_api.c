@@ -1598,7 +1598,7 @@ acl_entry_t *get_macfilter_entry(wifi_vap_info_t *vap_info, uint32_t acl_entry_i
         count_queue = queue_count(*acl_new_entry_queue);
     }
 
-    if (acl_entry_index > (count_hash + count_queue)) {
+    if (acl_entry_index >= (count_hash + count_queue)) {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d Wrong acl_entry_index\n", __func__, __LINE__);
         return NULL;
     }
@@ -1728,7 +1728,45 @@ static int sync_dml_macfilter_index(void *arg)
             wifi_util_error_print(WIFI_DMCLI, "%s:%d table remove row:%s failed\n", __func__,
                 __LINE__, new_row_name);
         } else {
+            /* bus_unreg_table_row_fn bypasses macfilter_table_remove_row_handler, so any
+             * orphaned uncommitted (zero-MAC) acl_entry in acl_new_entry_queue that was
+             * associated with the unregistered bus row must be freed explicitly. Without
+             * this cleanup the zero-MAC entry becomes visible as "00:00:00:00:00:00" after
+             * re-indexing. */
+            wifi_vap_info_t *vap_info = (wifi_vap_info_t *)getVapInfo(vap_index - 1);
+            if (vap_info != NULL) {
+                queue_t **acl_new_entry_queue = (queue_t **)get_acl_new_entry_queue(vap_info);
+                if (acl_new_entry_queue != NULL && *acl_new_entry_queue != NULL) {
+                    uint32_t q_cnt = queue_count(*acl_new_entry_queue);
+                    if (q_cnt > 0) {
+                        acl_entry_t *orphan =
+                            (acl_entry_t *)queue_remove(*acl_new_entry_queue, q_cnt - 1);
+                        if (orphan != NULL) {
+                            free(orphan);
+                        }
+                    }
+                }
+            }
             (*cur_macfilter_index)--;
+            /* After freeing orphaned queue entries, unregister any bus rows that now
+             * exceed the actual number of data entries. */
+            if (vap_info != NULL) {
+                uint32_t actual_entries = 0;
+                max_macfilter_number_of_entries(vap_info, &actual_entries);
+                while (*cur_macfilter_index > actual_entries) {
+                    char excess_row[64] = { 0 };
+                    snprintf(excess_row, sizeof(excess_row), "%s%d", input_arg->table_row,
+                        *cur_macfilter_index);
+                    if (p_bus_desc->bus_unreg_table_row_fn(&ctrl->handle, excess_row) !=
+                        bus_error_success) {
+                        wifi_util_error_print(WIFI_DMCLI,
+                            "%s:%d excess macfilter row remove:%s failed\n", __func__, __LINE__,
+                            excess_row);
+                        break;
+                    }
+                    (*cur_macfilter_index)--;
+                }
+            }
         }
     }
 
