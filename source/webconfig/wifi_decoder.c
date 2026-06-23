@@ -4108,6 +4108,11 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
         char *tmp_mac = cJSON_GetStringValue(client);
 
         str_to_mac_bytes(tmp_mac, mac);
+        if (is_zero_mac(mac)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,
+                "%s:%d skipping zero-mac ACL entry during decode\n", __func__, __LINE__);
+            continue;
+        }
 
         acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
         if (acl_entry == NULL) {

@@ -2127,6 +2127,13 @@ webconfig_error_t encode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
     if(rdk_vap_info->acl_map != NULL) {
         acl_entry = hash_map_get_first(rdk_vap_info->acl_map);
         while(acl_entry != NULL) {
+            if (is_zero_mac(acl_entry->mac)) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,
+                    "%s:%d skipping zero-mac ACL entry for vap:%s\n", __func__, __LINE__,
+                    rdk_vap_info->vap_name);
+                acl_entry = hash_map_get_next(rdk_vap_info->acl_map, acl_entry);
+                continue;
+            }
 
             cJSON *obj_acl_list;
             obj_acl_list= cJSON_CreateObject();
