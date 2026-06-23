@@ -18080,6 +18080,7 @@ MacFiltTab_GetEntry
         ULONG*                      pInsNumber
     )
 {
+    mac_address_t zero_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Inside GetEntry \n",__func__, __LINE__);
     wifi_vap_info_t *vap_info = (wifi_vap_info_t *)hInsContext;
     if (vap_info == NULL) {
@@ -18124,6 +18125,15 @@ MacFiltTab_GetEntry
 
     *pInsNumber = nIndex+1;
     *acl_vap_context = (void *)vap_info;
+
+    // Fix: Filter out zero MAC entries to prevent them from being displayed in GUI
+    // This handles the case where re-indexing creates temporary zero MAC entries
+    if (acl_entry != NULL) {
+        if (memcmp(acl_entry->mac, zero_mac, sizeof(mac_address_t)) == 0) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Skipping zero MAC entry at index %d\n",__func__, __LINE__, nIndex);
+            return (ANSC_HANDLE)NULL;
+        }
+    }
 
     return (ANSC_HANDLE)acl_entry;
 }
