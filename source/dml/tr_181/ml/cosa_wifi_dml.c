@@ -98,6 +98,9 @@ extern ULONG g_currentBsUpdate;
 extern bool is_radio_config_changed;
 static int radio_reset_count;
 ULONG last_vap_change;
+
+/* Global counter for MAC filter table instance numbers - ensures unique, persistent instance numbers */
+static ULONG g_MacFiltTab_NextInstanceNumber = 1;
 ULONG last_radio_change;
 extern bool g_update_wifi_region;
 
@@ -18174,7 +18177,13 @@ MacFiltTab_GetEntry
         }
     }
 
-    *pInsNumber = nIndex+1;
+    /* Return the stored instance number, NOT the index position */
+    if (acl_entry != NULL) {
+        *pInsNumber = acl_entry->InstanceNumber;
+    } else {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d acl_entry is NULL at index %u\n",__func__, __LINE__, nIndex);
+        return (ANSC_HANDLE)NULL;
+    }
     *acl_vap_context = (void *)vap_info;
 
     return (ANSC_HANDLE)acl_entry;
@@ -18212,6 +18221,10 @@ MacFiltTab_AddEntry
 
     memset(acl_entry, 0, sizeof(acl_entry_t));
 
+    /* Assign a unique, persistent instance number - only assign once at creation */
+    acl_entry->InstanceNumber = g_MacFiltTab_NextInstanceNumber++;
+    *pInsNumber = acl_entry->InstanceNumber;
+
     /* DBG: state BEFORE push */
     {
         unsigned int dbg_qc = (*acl_new_entry_queue != NULL) ? queue_count(*acl_new_entry_queue) : 0;
@@ -18227,7 +18240,7 @@ MacFiltTab_AddEntry
 
     if (*acl_device_map != NULL) {
         count  = count  + hash_map_count(*acl_device_map);
-    } 
+    }
 
     /* DBG: state AFTER push — this zero-MAC placeholder must be removed in SetParamStringValue */
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] AFTER push: queue_count=%u hash_map_count=%u pInsNumber=%u new_entry_ptr=%p\n",
@@ -18235,9 +18248,6 @@ MacFiltTab_AddEntry
         (*acl_new_entry_queue != NULL) ? queue_count(*acl_new_entry_queue) : 0,
         (*acl_device_map     != NULL) ? hash_map_count(*acl_device_map)   : 0,
         count, (void*)acl_entry);
-
-    //new entry index
-    *pInsNumber = count;
 
     //dont send the blob now because there is no valid mac entry. waits the update
 
@@ -18481,6 +18491,13 @@ MacFiltTab_SetParamStringValue
         if (memcmp(acl_entry->mac, zero_mac, sizeof(mac_address_t)) == 0) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] entry ptr=%p has zero-MAC => promoting to hash_map with MAC=%s\n",
                 __func__, __LINE__, (void*)acl_entry, pString);
+            /* Check for duplicate MAC address - prevent duplicate entries */
+            if (*acl_device_map != NULL) {
+                if (hash_map_get(*acl_device_map, pString) != NULL) {
+                    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Duplicate MAC address: %s\n", __func__, __LINE__, pString);
+                    return FALSE;
+                }
+            }
             memcpy(acl_entry->mac, new_mac, sizeof(mac_address_t));
             if (*acl_device_map == NULL) {
                 *acl_device_map = hash_map_create();

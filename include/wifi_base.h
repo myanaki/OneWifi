@@ -1072,6 +1072,7 @@ typedef enum {
 } acl_entry_reason_t;
 
 typedef struct {
+    ULONG InstanceNumber;        /* Persistent instance number - never changes after creation */
     mac_address_t mac;
     CHAR device_name[64];
     acl_entry_reason_t  reason;
