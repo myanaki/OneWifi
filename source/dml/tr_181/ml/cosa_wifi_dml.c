@@ -18148,8 +18148,9 @@ MacFiltTab_GetEntry
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] nIndex=%lu hash_map_count=%u queue_count=%u\n",
         __func__, __LINE__, nIndex, count_hash, count_queue);
 
-    if (nIndex > (count_hash + count_queue)) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Wrong nIndex\n",__func__, __LINE__);
+    if (nIndex >= (count_hash + count_queue)) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d nIndex=%lu out of range (hash=%u queue=%u)\n",
+            __func__, __LINE__, nIndex, count_hash, count_queue);
         return (ANSC_HANDLE)NULL;
     }
 
@@ -18177,11 +18178,21 @@ MacFiltTab_GetEntry
         }
     }
 
-    /* Return the stored instance number, NOT the index position */
+    /* Return the stored instance number, NOT the index position.
+     * Entries loaded from DB at boot have InstanceNumber==0 because the DB
+     * loader does memset(0) on acl_entry_t and has no knowledge of this field.
+     * Auto-assign from the global counter on first GetEntry call so CCSP
+     * never receives instance number 0 (which is invalid and causes no entries
+     * to be registered in the DM table). */
     if (acl_entry != NULL) {
+        if (acl_entry->InstanceNumber == 0) {
+            acl_entry->InstanceNumber = g_MacFiltTab_NextInstanceNumber++;
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] auto-assigned InstanceNumber=%lu for DB-loaded entry at nIndex=%lu\n",
+                __func__, __LINE__, acl_entry->InstanceNumber, nIndex);
+        }
         *pInsNumber = acl_entry->InstanceNumber;
     } else {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d acl_entry is NULL at index %u\n",__func__, __LINE__, nIndex);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d acl_entry is NULL at index %lu\n",__func__, __LINE__, nIndex);
         return (ANSC_HANDLE)NULL;
     }
     *acl_vap_context = (void *)vap_info;
