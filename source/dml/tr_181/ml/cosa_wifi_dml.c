@@ -18198,10 +18198,12 @@ MacFiltTab_GetEntry
         if (acl_entry->InstanceNumber == 0) {
             mac_addr_str_t inst_mac_str;
             to_mac_str(acl_entry->mac, inst_mac_str);
-            str_tolower(inst_mac_str);
+            /* to_mac_str uses %02x (lowercase with colons) which matches the key
+             * stored in SetParamStringValue via snprintf("%02x:%02x:...").
+             * No str_tolower needed — already lowercase from to_mac_str. */
             ULONG *stored_inst = (g_mac_instance_map[vap_info->vap_index] != NULL) ?
                 (ULONG *)hash_map_get(g_mac_instance_map[vap_info->vap_index], inst_mac_str) : NULL;
-            if (stored_inst != NULL) {
+            if (stored_inst != NULL && *stored_inst != 0) {
                 acl_entry->InstanceNumber = *stored_inst;
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] restored InstanceNumber=%lu from map for MAC=%s nIndex=%lu\n",
                     __func__, __LINE__, acl_entry->InstanceNumber, inst_mac_str, nIndex);
@@ -18213,7 +18215,7 @@ MacFiltTab_GetEntry
                 ULONG *inst_copy = (ULONG *)malloc(sizeof(ULONG));
                 *inst_copy = acl_entry->InstanceNumber;
                 hash_map_put(g_mac_instance_map[vap_info->vap_index], strdup(inst_mac_str), inst_copy);
-                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] auto-assigned InstanceNumber=%lu for MAC=%s nIndex=%lu (DB-loaded entry)\n",
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] auto-assigned InstanceNumber=%lu for MAC=%s nIndex=%lu (DB-loaded or map-miss)\n",
                     __func__, __LINE__, acl_entry->InstanceNumber, inst_mac_str, nIndex);
             }
         }
@@ -18556,16 +18558,22 @@ MacFiltTab_SetParamStringValue
             /* Save InstanceNumber to DML-owned stable map BEFORE hash_map_put.
              * OneWifi may rebuild the acl_entry object (memset(0)) when
              * push_acl_list_dml_cache_to_one_wifidb is called, losing
-             * acl_entry->InstanceNumber. The stable map survives this rebuild. */
+             * acl_entry->InstanceNumber. The stable map survives this rebuild.
+             * Key is built from MAC bytes directly (not pString) to guarantee
+             * the same format as the GetEntry lookup (to_mac_str = %02x:...). */
             if (g_mac_instance_map[vap_info->vap_index] == NULL) {
                 g_mac_instance_map[vap_info->vap_index] = hash_map_create();
             }
             {
+                char mac_key[18] = {0};
+                snprintf(mac_key, sizeof(mac_key), "%02x:%02x:%02x:%02x:%02x:%02x",
+                    new_mac[0], new_mac[1], new_mac[2],
+                    new_mac[3], new_mac[4], new_mac[5]);
                 ULONG *inst_copy = (ULONG *)malloc(sizeof(ULONG));
                 *inst_copy = acl_entry->InstanceNumber;
-                hash_map_put(g_mac_instance_map[vap_info->vap_index], strdup(pString), inst_copy);
+                hash_map_put(g_mac_instance_map[vap_info->vap_index], strdup(mac_key), inst_copy);
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] saved InstanceNumber=%lu to stable map for MAC=%s\n",
-                    __func__, __LINE__, acl_entry->InstanceNumber, pString);
+                    __func__, __LINE__, acl_entry->InstanceNumber, mac_key);
             }
             hash_map_put(*acl_device_map, strdup(pString), acl_entry);
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] hash_map_put done MAC=%s  hash_map_count_now=%u  queue_count_before_remove=%u\n",
