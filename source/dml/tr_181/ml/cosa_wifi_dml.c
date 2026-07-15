@@ -98,6 +98,10 @@ extern ULONG g_currentBsUpdate;
 extern bool is_radio_config_changed;
 static int radio_reset_count;
 ULONG last_vap_change;
+/* MAC filter table instance counter */
+static ULONG g_MacFiltTab_NextInstanceNumber = 1;
+/* Per-VAP MAC instance map: mac_str -> InstanceNumber */
+static hash_map_t *g_mac_instance_map[MAX_VAP + 1];
 ULONG last_radio_change;
 extern bool g_update_wifi_region;
 
@@ -18098,8 +18102,9 @@ MacFiltTab_GetEntry
         count_queue  = queue_count(*acl_new_entry_queue);
     }
 
-    if (nIndex > (count_hash + count_queue)) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Wrong nIndex\n",__func__, __LINE__);
+    if (nIndex >= (count_hash + count_queue)) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d nIndex=%lu out of range (hash=%u queue=%u)\n",
+            __func__, __LINE__, nIndex, count_hash, count_queue);
         return (ANSC_HANDLE)NULL;
     }
 
@@ -18112,7 +18117,34 @@ MacFiltTab_GetEntry
         acl_entry = (acl_entry_t *) queue_peek(*acl_new_entry_queue, (nIndex - count_hash));
     }
 
-    *pInsNumber = nIndex+1;
+    /* Use g_mac_instance_map for stable instance numbers.
+     * InstanceNumber may be reset by OneWifi, so restore from map or auto-assign. */
+    if (acl_entry != NULL) {
+        if (acl_entry->InstanceNumber == 0) {
+            mac_addr_str_t inst_mac_str;
+            to_mac_str(acl_entry->mac, inst_mac_str);
+            /* MAC string format: %02x (lowercase with colons) from to_mac_str. */
+            ULONG *stored_inst = (g_mac_instance_map[vap_info->vap_index] != NULL) ?
+                (ULONG *)hash_map_get(g_mac_instance_map[vap_info->vap_index], inst_mac_str) : NULL;
+            if (stored_inst != NULL && *stored_inst != 0) {
+                acl_entry->InstanceNumber = *stored_inst;
+            } else {
+                acl_entry->InstanceNumber = g_MacFiltTab_NextInstanceNumber++;
+                if (g_mac_instance_map[vap_info->vap_index] == NULL) {
+                    g_mac_instance_map[vap_info->vap_index] = hash_map_create();
+                }
+                ULONG *inst_copy = (ULONG *)malloc(sizeof(ULONG));
+                *inst_copy = acl_entry->InstanceNumber;
+                hash_map_put(g_mac_instance_map[vap_info->vap_index], strdup(inst_mac_str), inst_copy);
+            }
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] InstanceNumber=%lu for MAC=%s nIndex=%lu\n",
+                __func__, __LINE__, acl_entry->InstanceNumber, inst_mac_str, nIndex);
+        }
+        *pInsNumber = acl_entry->InstanceNumber;
+    } else {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d acl_entry is NULL at index %lu\n",__func__, __LINE__, nIndex);
+        return (ANSC_HANDLE)NULL;
+    }
     *acl_vap_context = (void *)vap_info;
 
     return (ANSC_HANDLE)acl_entry;
@@ -18149,6 +18181,10 @@ MacFiltTab_AddEntry
     }
 
     memset(acl_entry, 0, sizeof(acl_entry_t));
+
+    /* Assign unique persistent instance number */
+    acl_entry->InstanceNumber = g_MacFiltTab_NextInstanceNumber++;
+    *pInsNumber = acl_entry->InstanceNumber;
     
     if (*acl_new_entry_queue != NULL) {
         queue_push(*acl_new_entry_queue, acl_entry);
@@ -18158,9 +18194,6 @@ MacFiltTab_AddEntry
     if (*acl_device_map != NULL) {
         count  = count  + hash_map_count(*acl_device_map);
     } 
-
-    //new entry index
-    *pInsNumber = count;
 
     //dont send the blob now because there is no valid mac entry. waits the update
 
@@ -18221,6 +18254,16 @@ MacFiltTab_DelEntry
         tmp_acl_entry = hash_map_remove(*acl_device_map, mac_str);
         if (tmp_acl_entry != NULL) {
             free(tmp_acl_entry);
+        }
+
+        /* Remove from the DML-owned stable instance map */
+        if (g_mac_instance_map[vap_info->vap_index] != NULL) {
+            ULONG *old_inst = (ULONG *)hash_map_remove(g_mac_instance_map[vap_info->vap_index], mac_str);
+            if (old_inst != NULL) {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] removed InstanceNumber=%lu from stable map for MAC=%s\n",
+                    __func__, __LINE__, *old_inst, mac_str);
+                free(old_inst);
+            }
         }
 
         // Send blob
@@ -18352,6 +18395,14 @@ MacFiltTab_SetParamStringValue
         }
         
         if (memcmp(acl_entry->mac, zero_mac, sizeof(mac_address_t)) == 0) {
+            /* Check for duplicate MAC address - prevent duplicate entries */
+            if (*acl_device_map != NULL) {
+                if (hash_map_get(*acl_device_map, pString) != NULL) {
+                    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Duplicate MAC address: %s\n", __func__, __LINE__, pString);
+                    return FALSE;
+                }
+            }
+
             memcpy(acl_entry->mac, new_mac, sizeof(mac_address_t));
             if (*acl_device_map == NULL) {
                 *acl_device_map = hash_map_create();
@@ -18360,6 +18411,30 @@ MacFiltTab_SetParamStringValue
             if (*acl_device_map == NULL) {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
                 return FALSE;
+            }
+            /* Save InstanceNumber to stable map before hash_map_put.
+             * Prevents loss when acl_entry is rebuilt during cache sync. */
+            if (g_mac_instance_map[vap_info->vap_index] == NULL) {
+                g_mac_instance_map[vap_info->vap_index] = hash_map_create();
+                if (g_mac_instance_map[vap_info->vap_index] == NULL) {
+                    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed to create instance map\n", __func__, __LINE__);
+                    return FALSE;
+                }
+            }
+            {
+                char mac_key[18] = {0};
+                snprintf(mac_key, sizeof(mac_key), "%02x:%02x:%02x:%02x:%02x:%02x",
+                    new_mac[0], new_mac[1], new_mac[2],
+                    new_mac[3], new_mac[4], new_mac[5]);
+                ULONG *inst_copy = (ULONG *)malloc(sizeof(ULONG));
+                if (inst_copy == NULL) {
+                    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Memory allocation failed\n", __func__, __LINE__);
+                    return FALSE;
+                }
+                *inst_copy = acl_entry->InstanceNumber;
+                hash_map_put(g_mac_instance_map[vap_info->vap_index], strdup(mac_key), inst_copy);
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d [DBG] saved InstanceNumber=%lu to stable map for MAC=%s\n",
+                    __func__, __LINE__, acl_entry->InstanceNumber, mac_key);
             }
             hash_map_put(*acl_device_map, strdup(pString), acl_entry);
 
