@@ -2850,7 +2850,8 @@ bus_error_t apply_ignite_config(char *paramName,
     webconfig_subdoc_data_t *data = NULL;
     char *str;
     unsigned int num_of_radios = getNumberRadios();
-
+     
+    wifi_util_error_print(WIFI_CTRL, "Sachin _debug entry: [%s][%d]\n", __func__, __LINE__);
     if (mgr == NULL || ctrl == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
         return bus_error_general;
@@ -2876,6 +2877,7 @@ bus_error_t apply_ignite_config(char *paramName,
 
         if (num_of_radios > MAX_NUM_RADIOS) {
         wifi_util_error_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
+        free(data);
         return RETURN_ERR;
     }
     // Copy pending config to data
@@ -2899,7 +2901,7 @@ bus_error_t apply_ignite_config(char *paramName,
         free(data);
         return bus_error_general;
     }
-
+     wifi_util_error_print(WIFI_CTRL, "Sachin _debug exit: [%s][%d]\n", __func__, __LINE__);
     webconfig_data_free(data);
     free(data);
     return bus_error_success;
@@ -4172,7 +4174,8 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
     unsigned int radio_index;
     int subdoc_type;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
+    
+    wifi_util_error_print(WIFI_CTRL, "Sachin _debug entry: [%s][%d]\n", __func__, __LINE__);
     if (!name) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
             __LINE__);
@@ -4240,6 +4243,7 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
         free(data);
         return bus_error_success;
     }
+     wifi_util_error_print(WIFI_CTRL, "Sachin _debug exit: [%s][%d]\n", __func__, __LINE__);
     wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid name : %s\r\n", __func__, __LINE__, name);
 
     return bus_error_invalid_input;
