@@ -4487,7 +4487,14 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, bus_data_prop
         return bus_error_destination_not_found;
     }
 
-    memcpy(&mac_addr, pTmp, len);
+    if (len > sizeof(mac_addr)) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d invalid input length %u for client assoc request, expected %zu\r\n",
+            __func__, __LINE__, len, sizeof(mac_addr));
+        return bus_error_invalid_input;
+    }
+
+    memcpy(&mac_addr, pTmp, sizeof(mac_addr));
     wifi_util_dbg_print(WIFI_CTRL, "%s %d mac : %s ifname : %s\n", __func__, __LINE__, mac_addr.mac_addr, mac_addr.if_name); 
     memset(&tmp_data, 0, sizeof(tmp_data));
     prop = (wifi_platform_property_t *)get_wifi_hal_cap_prop();
